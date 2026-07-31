@@ -295,6 +295,43 @@ async function buildNightlyReport() {
   }
   const text = lines.join('\n');
 
+  // Pretty HTML version — one colored card per kid (inline styles for email clients)
+  const KID_STYLE = {
+    luke: { color: '#0076B6', emoji: '🦁' },
+    layla: { color: '#12939b', emoji: '🐬' },
+    logan: { color: '#4a6b3a', emoji: '🎣' },
+    lazarus: { color: '#1f9e46', emoji: '🎯' },
+  };
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const list = (items, icon, color) => items.length
+    ? `<ul style="margin:6px 0;padding-left:4px;list-style:none;">${items.map((i) => `<li style="margin:3px 0;color:${color};font-size:14px;">${icon} ${esc(i)}</li>`).join('')}</ul>`
+    : '';
+  const cards = STUDENT_ORDER.map((id) => {
+    const s = perStudent[id];
+    const k = KID_STYLE[id];
+    const av = students[id]?.theme?.avatar ?? k.emoji;
+    const allClear = s.missing.length === 0 && s.completedToday.length > 0;
+    return `
+    <div style="background:#ffffff;border-radius:14px;border-top:5px solid ${k.color};box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:14px 18px;margin:0 0 14px;">
+      <div style="font-size:18px;font-weight:800;color:#222;">${av} ${esc(s.name)}
+        ${allClear ? '<span style="background:#def0e3;color:#2c7a48;border-radius:999px;padding:2px 10px;font-size:12px;margin-left:8px;">Day done 🎉</span>' : ''}
+        ${s.missing.length ? `<span style="background:#fde3df;color:#b3402f;border-radius:999px;padding:2px 10px;font-size:12px;margin-left:8px;">${s.missing.length} not done</span>` : ''}
+      </div>
+      ${list(s.completedToday, '✅', '#2c7a48')}
+      ${s.completedToday.length === 0 ? '<p style="color:#999;font-size:13px;margin:6px 0;">Nothing finished today.</p>' : ''}
+      ${list(s.missing.slice(0, 6).map((m) => m.replace(/ \(\d{4}-\d{2}-\d{2}\)$/, '')), '⏰', '#9c5518')}
+      ${s.missing.length > 6 ? `<p style="color:#9c5518;font-size:12px;">…and ${s.missing.length - 6} more</p>` : ''}
+      ${list(s.gradesToday, '📊', '#3b6ea8')}
+    </div>`;
+  }).join('');
+  const html = `
+  <div style="background:#f4f2ee;padding:22px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+    <h1 style="font-size:20px;color:#2a2a2a;margin:0 0 4px;">🏫 Wireman Family School</h1>
+    <p style="color:#777;margin:0 0 16px;">Evening report — ${new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+    ${cards}
+    <p style="color:#aaa;font-size:12px;">Open the <a href="https://stevenabi6912-prog.github.io/wireman-family-school/" style="color:#5b4b8a;">dashboard</a> to reschedule, waive, or review grades.</p>
+  </div>`;
+
   await db.doc(`reports/${today}`).set({
     date: today,
     perStudent,
@@ -310,6 +347,7 @@ async function buildNightlyReport() {
       return `${s.name} ${s.completedToday.length}✓${s.missing.length ? ` ${s.missing.length}!` : ''}`;
     }).join(', ')}`,
     text,
+    html,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   return today;
@@ -340,6 +378,7 @@ export const sendOutbox = onDocumentCreated(
         to: data.to,
         subject: data.subject,
         text: data.text,
+        html: data.html,
         attachments: data.attachmentUrl
           ? [{ filename: data.attachmentName ?? 'attachment.pdf', path: data.attachmentUrl }]
           : undefined,
