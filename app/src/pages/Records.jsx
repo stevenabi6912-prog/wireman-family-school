@@ -22,8 +22,9 @@ export default function Records() {
   useEffect(() => {
     const unsubG = watchAllGrades(setGrades);
     const unsubS = watchStudents(setStudents);
-    // Titles for graded assignments (tests etc.) — pull once from planned items
-    const unsubT = onSnapshot(query(collection(db, 'assignments'), where('dayIndex', '>', 0)), (snap) => {
+    // Titles for graded assignments — cover ALL assignments (demo/placement
+    // items have no dayIndex but still get graded)
+    const unsubT = onSnapshot(collection(db, 'assignments'), (snap) => {
       const map = {};
       snap.docs.forEach((d) => {
         map[d.id] = d.data().title;
@@ -79,12 +80,12 @@ export default function Records() {
           <section key={id} className="records-student">
             <h2>{students[id]?.name ?? id} — Grade {students[id]?.grade ?? ''}</h2>
             <p className="records-averages">
-              {SUBJECTS.filter((s) => avgRow[s]).map((s) => (
+              {SUBJECTS.filter((s) => avgRow[s] && (subjectFilter === 'all' || s === subjectFilter)).map((s) => (
                 <span key={s} className="avg-chip">
                   {SUBJECT_NAMES[s]}: <strong>{avgRow[s].avg}%</strong> ({avgRow[s].count})
                 </span>
               ))}
-              {Object.keys(avgRow).length === 0 && <span className="records-none">No graded work yet.</span>}
+              {list.length === 0 && <span className="records-none">Nothing here yet.</span>}
             </p>
             {list.length > 0 && (
               <table className="records-table">

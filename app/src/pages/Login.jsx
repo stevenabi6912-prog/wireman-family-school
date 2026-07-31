@@ -38,9 +38,8 @@ export default function Login() {
       await loginWithPin(selected.id, nextPin);
       navigate(selected.isParent ? '/dashboard' : '/today', { replace: true });
     } catch {
-      setError(true);
+      setError(true); // stays until the next keypad press so kids can read it
       setPin('');
-      setTimeout(() => setError(false), 600);
     } finally {
       setSubmitting(false);
     }
@@ -48,6 +47,7 @@ export default function Login() {
 
   function pressDigit(d) {
     if (submitting) return;
+    setError(false);
     const nextPin = pin + d;
     setPin(nextPin);
     if (!selected.isParent && nextPin.length === STUDENT_PIN_LENGTH) {

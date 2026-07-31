@@ -37,10 +37,16 @@ export default function YearTrail({ studentId, avatar }) {
   if (!days || dots.length === 0) return null;
 
   const monthName = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' });
+  const today = new Date().toLocaleDateString('sv-SE');
+  const preSeason = dots[0].date > today;
 
   return (
     <div className="trail-box">
-      <h3 className="trail-title">🗺️ My year trail — {doneDays} of {dots.length} days done</h3>
+      <h3 className="trail-title">
+        {preSeason
+          ? `🗺️ My year trail — the adventure starts ${new Date(dots[0].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}!`
+          : `🗺️ My year trail — ${doneDays} of ${dots.length} days done`}
+      </h3>
       <div className="trail-scroll">
         <div className="trail-row">
           {dots.map((d, i) => {
