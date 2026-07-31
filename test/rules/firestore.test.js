@@ -103,6 +103,18 @@ describe('students', () => {
     await assertFails(updateDoc(doc(asLuke(), 'students/luke'), { grade: 9 }));
   });
 
+  it('a student CAN update their own cosmetic theme, and only that', async () => {
+    await assertSucceeds(
+      updateDoc(doc(asLuke(), 'students/luke'), { theme: { palette: 'space', avatar: '🦖' } })
+    );
+    await assertFails(
+      updateDoc(doc(asLuke(), 'students/luke'), { theme: { palette: 'space' }, grade: 12 })
+    );
+    await assertFails(
+      updateDoc(doc(asLayla(), 'students/luke'), { theme: { palette: 'space' } })
+    );
+  });
+
   it('the parent can read and write any student doc', async () => {
     await assertSucceeds(getDoc(doc(asAbi(), 'students/layla')));
     await assertSucceeds(updateDoc(doc(asAbi(), 'students/layla'), { grade: 9 }));

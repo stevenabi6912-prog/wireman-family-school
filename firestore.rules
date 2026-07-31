@@ -39,10 +39,17 @@ service cloud.firestore {
       allow write: if isParent();
     }
 
-    // ---- students: a kid can read only their own student doc; nothing else ----
+    // ---- students: a kid can read only their own student doc; nothing else.
+    //      One exception: they may update their own cosmetic theme (avatar +
+    //      colors) — and only that field. ----
     match /students/{studentId} {
       allow read: if isParent() || isStudent(studentId);
-      allow write: if isParent();
+      allow create, delete: if isParent();
+      allow update: if isParent() || (
+        isStudent(studentId) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['theme', 'updatedAt'])
+      );
     }
 
     // ---- assignments: a kid can read/update status on only their own assignments.
