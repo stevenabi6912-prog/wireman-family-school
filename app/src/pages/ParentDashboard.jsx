@@ -17,6 +17,7 @@ import { watchAllGrades } from '../lib/grades';
 import { computeStruggleFlags } from '../lib/struggles';
 import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
+import MemoryWork from '../components/MemoryWork';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -214,6 +215,8 @@ export default function ParentDashboard() {
           </ul>
         )}
       </section>
+
+      <MemoryWork students={students} order={STUDENT_ORDER} />
 
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
 

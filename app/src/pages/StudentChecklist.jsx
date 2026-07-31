@@ -297,6 +297,7 @@ export default function StudentChecklist() {
                   assignment={a}
                   studentId={studentId}
                   large={large}
+                  memoryWork={student?.memoryWork}
                   state={DONE_STATUSES.has(a.status) ? 'done' : i === activeIndex ? 'active' : 'locked'}
                 />
               ))}

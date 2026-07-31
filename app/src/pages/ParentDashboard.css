@@ -384,3 +384,22 @@
   font-size: 0.88rem;
   color: #3b6ea8;
 }
+
+.memwork-section { margin-top: 2rem; }
+.memwork-section h2 { font-size: 1.25rem; color: #2a2a2a; margin-bottom: 0.25rem; }
+.memwork-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+}
+.memwork-card { background: white; border-radius: 14px; padding: 0.9rem 1.1rem; }
+.memwork-card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.memwork-card textarea {
+  width: 100%; border: 1px solid #ddd; border-radius: 8px;
+  padding: 0.5rem; font-size: 0.9rem; font-family: inherit; resize: vertical;
+}
+.memwork-card button {
+  margin-top: 0.4rem; border: none; background: #5b4b8a; color: white;
+  border-radius: 999px; padding: 0.45rem 1rem; font-weight: 700; cursor: pointer;
+}
+.memwork-card button:disabled { opacity: 0.45; }

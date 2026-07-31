@@ -17,7 +17,7 @@ const TYPE_LABELS = {
 // with a parent in person; reading and video just need a "done" tap.
 const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video']);
 
-export default function AssignmentCard({ assignment, studentId, state, large }) {
+export default function AssignmentCard({ assignment, studentId, state, large, memoryWork }) {
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
 
@@ -54,6 +54,13 @@ export default function AssignmentCard({ assignment, studentId, state, large }) 
             ) : (
               <p className="video-placeholder">Your math video link is coming soon — ask Mom which lesson to watch.</p>
             )
+          )}
+
+          {assignment.itemType === 'memorization' && memoryWork && (
+            <div className="memwork-list">
+              <p className="memwork-list-title">📜 Your memory work from Mom:</p>
+              <pre className="memwork-list-body">{memoryWork}</pre>
+            </div>
           )}
 
           {assignment.contentPath && <PdfViewer contentPath={assignment.contentPath} />}

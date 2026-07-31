@@ -400,6 +400,78 @@ export const sendOutbox = onDocumentCreated(
 );
 
 // ---------------------------------------------------------------------------
+// Friday wins: the celebration email — best grades, days finished, bonus
+// items banked, week's trail progress. The one to forward to grandparents.
+// ---------------------------------------------------------------------------
+
+export const fridayWins = onSchedule(
+  { schedule: '0 17 * * 5', timeZone: 'America/Detroit' },
+  async () => {
+    const db = admin.firestore();
+    const today = isoToday();
+    const weekAgo = new Date(today + 'T12:00:00');
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekStart = weekAgo.toLocaleDateString('sv-SE');
+
+    const [assignSnap, gradeSnap, studentSnap] = await Promise.all([
+      db.collection('assignments').where('scheduledDate', '>=', weekStart).where('scheduledDate', '<=', today).get(),
+      db.collection('grades').get(),
+      db.collection('students').get(),
+    ]);
+    const students = {};
+    studentSnap.docs.forEach((d) => { students[d.id] = d.data(); });
+
+    const wins = {};
+    for (const id of STUDENT_ORDER) wins[id] = { done: 0, total: 0, bestGrade: null, banked: 0 };
+    assignSnap.docs.forEach((d) => {
+      const a = d.data();
+      const w = wins[a.studentId];
+      if (!w) return;
+      w.total++;
+      if (DONE.has(a.status)) w.done++;
+    });
+    gradeSnap.docs.forEach((d) => {
+      const g = d.data();
+      const when = g.gradedAt?.toDate?.()?.toLocaleDateString?.('sv-SE', { timeZone: 'America/Detroit' });
+      if (!when || when < weekStart) return;
+      const score = g.overriddenScore ?? g.score;
+      if (score == null || !g.maxScore) return;
+      const pct = Math.round((score / g.maxScore) * 100);
+      const w = wins[g.studentId];
+      if (w && (!w.bestGrade || pct > w.bestGrade.pct)) w.bestGrade = { pct, assignmentId: g.assignmentId };
+    });
+
+    if (Object.values(wins).every((w) => w.total === 0)) return; // no school this week
+
+    const KID_STYLE = { luke: '#0076B6', layla: '#12939b', logan: '#4a6b3a', lazarus: '#1f9e46' };
+    const cards = STUDENT_ORDER.map((id) => {
+      const w = wins[id];
+      const av = students[id]?.theme?.avatar ?? '⭐';
+      const lines = [];
+      if (w.total) lines.push(`✅ Finished ${w.done} of ${w.total} items this week`);
+      if (w.bestGrade) lines.push(`🏆 Best grade: ${w.bestGrade.pct}%`);
+      return `<div style="background:#fff;border-radius:14px;border-top:5px solid ${KID_STYLE[id]};padding:14px 18px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+        <div style="font-size:17px;font-weight:800;">${av} ${students[id]?.name ?? id}</div>
+        ${lines.map((l) => `<div style="font-size:14px;margin-top:4px;">${l}</div>`).join('') || '<div style="color:#999;font-size:13px;">Quiet week.</div>'}
+      </div>`;
+    }).join('');
+
+    await db.collection('outbox').add({
+      to: REPORT_EMAIL,
+      subject: `🎉 This week's wins — ${STUDENT_ORDER.map((id) => `${students[id]?.name} ${wins[id].done}✓`).join(', ')}`,
+      text: STUDENT_ORDER.map((id) => `${students[id]?.name}: ${wins[id].done}/${wins[id].total} done${wins[id].bestGrade ? `, best ${wins[id].bestGrade.pct}%` : ''}`).join('\n'),
+      html: `<div style="background:#f4f2ee;padding:22px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+        <h1 style="font-size:20px;margin:0 0 4px;">🎉 This week's wins</h1>
+        <p style="color:#777;margin:0 0 16px;">Wireman Family School — week ending ${today}</p>
+        ${cards}
+        <p style="color:#aaa;font-size:12px;">Forward-to-grandparents approved.</p>
+      </div>`,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
 // Sunday packet: merge the coming week's printable pages (everything with a
 // page anchor) into one PDF per family and email it for one print run.
 // ---------------------------------------------------------------------------

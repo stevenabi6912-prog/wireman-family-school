@@ -474,3 +474,15 @@
   cursor: pointer;
   animation: pulse 1.6s infinite;
 }
+
+.memwork-list {
+  background: #fdf9ec;
+  border: 1px dashed #d9c477;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+.memwork-list-title { margin: 0 0 0.3rem; font-weight: 800; color: #6b5d1f; }
+.memwork-list-body {
+  margin: 0; white-space: pre-wrap; font-family: inherit;
+  font-size: 1.05rem; color: #4a3f15; line-height: 1.6;
+}
