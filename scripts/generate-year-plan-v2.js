@@ -16,12 +16,15 @@
 
 import admin from 'firebase-admin';
 import { existsSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { buildCalendar } from '../app/src/lib/calendar.js';
 
 admin.initializeApp({ projectId: 'wireman-homeschool', storageBucket: 'wireman-homeschool.firebasestorage.app' });
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
-const ROOT = new URL('../Hillsdale/HC Curriculum/', import.meta.url).pathname;
+// fileURLToPath decodes %20 etc. — .pathname does NOT, which silently broke
+// every existsSync check for the space in "HC Curriculum"
+const ROOT = fileURLToPath(new URL('../Hillsdale/HC Curriculum/', import.meta.url));
 const MATH_URL = 'https://digital.demmelearning.com/';
 const DONE = new Set(['submitted', 'graded', 'waived']);
 
