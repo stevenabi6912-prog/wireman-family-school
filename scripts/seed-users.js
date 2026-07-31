@@ -39,7 +39,7 @@ async function upsertAccount({ id, role, studentId, pinEnv }) {
   if (!pin) {
     throw new Error(`Missing required env var ${pinEnv} for account "${id}"`);
   }
-  const minLength = role === 'parent' ? 8 : 6;
+  const minLength = 6; // family decision: parent PIN same length as students'
   if (!/^\d+$/.test(pin) || pin.length < minLength) {
     throw new Error(
       `${pinEnv} must be a numeric PIN of at least ${minLength} digits (Firebase Auth's password minimum is 6 chars)`

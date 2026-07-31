@@ -5,7 +5,7 @@ import { STUDENTS, PARENT } from '../config/students';
 import './Login.css';
 
 const STUDENT_PIN_LENGTH = 6;
-const PARENT_MIN_PIN_LENGTH = 8;
+const PARENT_MIN_PIN_LENGTH = 6; // family decision: same length as the kids' PINs
 
 export default function Login() {
   const [selected, setSelected] = useState(null); // { id, name, color, isParent }

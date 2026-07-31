@@ -12,6 +12,7 @@
 .env.*
 !.env.example
 scripts/.pins.env
+serviceAccount.json
 *.local
 functions/.env
 functions/.runtimeconfig.json
