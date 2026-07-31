@@ -32,3 +32,4 @@ firebase-export-*/
 
 # OS
 .DS_Store
+year-plan-*.md
