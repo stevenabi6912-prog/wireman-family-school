@@ -1,14 +1,44 @@
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { useState } from 'react';
+import { doc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
 import { PALETTES, AVATARS } from '../config/themes';
 import './ThemePicker.css';
 
 export default function ThemePicker({ studentId, current, onClose }) {
+  const [uploading, setUploading] = useState(false);
+
   async function save(patch) {
     await updateDoc(doc(db, 'students', studentId), {
-      theme: { palette: current.palette, avatar: current.avatar, ...patch },
+      theme: {
+        palette: current.palette,
+        avatar: current.avatar,
+        headerImagePath: current.headerImagePath ?? null,
+        ...patch,
+      },
       updatedAt: serverTimestamp(),
     });
+  }
+
+  // Kid-supplied header image (their own picture — team logo, wallpaper,
+  // fishing photo, whatever they saved). Lives in the family's PRIVATE
+  // Storage under /themes/{studentId}/ — auth-gated, never in the repo.
+  async function onPicturePicked(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const path = `themes/${studentId}/header-${Date.now()}-${file.name}`;
+      await uploadBytes(ref(storage, path), file);
+      await save({ headerImagePath: path });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function removePicture() {
+    await save({ headerImagePath: null });
   }
 
   return (
@@ -45,6 +75,21 @@ export default function ThemePicker({ studentId, current, onClose }) {
             </button>
           ))}
         </div>
+
+        <h3>Your own picture up top</h3>
+        <div className="header-image-row">
+          <label className="header-upload-btn">
+            {uploading ? 'Uploading…' : '🖼️ Choose a picture'}
+            <input type="file" accept="image/*" onChange={onPicturePicked} hidden disabled={uploading} />
+          </label>
+          {current.headerImagePath && (
+            <button className="header-remove-btn" onClick={removePicture}>Remove picture</button>
+          )}
+        </div>
+        <p className="header-image-note">
+          Save any picture you like to this device, then choose it here — it becomes the banner
+          at the top of your page. Only our family can see it.
+        </p>
       </div>
     </div>
   );

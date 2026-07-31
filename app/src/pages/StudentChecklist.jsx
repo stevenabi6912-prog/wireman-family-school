@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { watchDayAssignments, todayISO } from '../lib/assignments';
+import { watchDayAssignments, todayISO, resolveContentUrl } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
+import { playDing, playFanfare, isMuted, setMuted } from '../lib/sounds';
 import AssignmentCard from '../components/AssignmentCard';
 import ThemePicker from '../components/ThemePicker';
+import Confetti from '../components/Confetti';
 import './StudentChecklist.css';
 
 const DONE_STATUSES = new Set(['submitted', 'graded', 'waived']);
@@ -16,11 +18,24 @@ const EMPTY_DAY_LINES = [
   'School\'s closed. Adventure time!',
 ];
 
+function cheerLine(done, total, large) {
+  if (total === 0 || done === 0) return null;
+  const frac = done / total;
+  if (frac === 1) return null;
+  if (total - done === 1) return large ? 'LAST ONE! 💪' : 'One more to go! 💪';
+  if (frac >= 0.5) return large ? 'Over halfway! 🚀' : 'Past halfway — keep rolling! 🚀';
+  return large ? 'Great start! 🔥' : 'Nice — momentum! 🔥';
+}
+
 export default function StudentChecklist() {
   const { studentId, logout } = useAuth();
   const [student, setStudent] = useState(null);
   const [assignments, setAssignments] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [burst, setBurst] = useState(null); // 'small' | 'big' | null
+  const [muted, setMutedState] = useState(isMuted());
+  const [headerImageUrl, setHeaderImageUrl] = useState(null);
+  const prevDone = useRef(null);
   const date = todayISO();
 
   useEffect(() => {
@@ -35,6 +50,22 @@ export default function StudentChecklist() {
     };
   }, [studentId, date]);
 
+  // Resolve the kid's optional custom header image (private Storage path)
+  useEffect(() => {
+    const path = student?.theme?.headerImagePath;
+    if (!path) {
+      setHeaderImageUrl(null);
+      return;
+    }
+    let cancelled = false;
+    resolveContentUrl(path)
+      .then((u) => !cancelled && setHeaderImageUrl(u))
+      .catch(() => !cancelled && setHeaderImageUrl(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [student?.theme?.headerImagePath]);
+
   const { doneCount, activeIndex } = useMemo(() => {
     if (!assignments) return { doneCount: 0, activeIndex: -1 };
     let done = 0;
@@ -46,12 +77,40 @@ export default function StudentChecklist() {
     return { doneCount: done, activeIndex: active };
   }, [assignments]);
 
+  const total = assignments?.length ?? 0;
+  const allDone = total > 0 && activeIndex === -1;
+
+  // Celebrate transitions: ding+confetti per item, fanfare+big confetti for the day
+  useEffect(() => {
+    if (assignments === null) return;
+    if (prevDone.current === null) {
+      prevDone.current = doneCount; // first load — no celebration for old progress
+      return;
+    }
+    if (doneCount > prevDone.current) {
+      if (allDone) {
+        playFanfare();
+        setBurst('big');
+      } else {
+        playDing();
+        setBurst('small');
+      }
+    }
+    prevDone.current = doneCount;
+  }, [doneCount, allDone, assignments]);
+
+  function toggleMute() {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  }
+
   const theme = resolveTheme(studentId, student?.theme);
   const large = (student?.grade ?? 8) <= 3;
   const firstName = student?.name ?? '';
-  const allDone = assignments && assignments.length > 0 && activeIndex === -1;
-  // stable-per-day playful line (no Math.random so it doesn't flicker)
   const emptyLine = EMPTY_DAY_LINES[date.split('-').reduce((a, b) => a + Number(b), 0) % EMPTY_DAY_LINES.length];
+  const cheer = cheerLine(doneCount, total, large);
+  const pct = total ? (doneCount / total) * 100 : 0;
 
   if (!assignments) {
     return <div className="loading-screen">Getting your list ready…</div>;
@@ -68,7 +127,10 @@ export default function StudentChecklist() {
 
   return (
     <div className={`checklist-screen ${large ? 'checklist-large' : ''}`} style={styleVars}>
-      <header className="hero-header">
+      <header
+        className={`hero-header ${headerImageUrl ? 'hero-header-image' : ''}`}
+        style={headerImageUrl ? { backgroundImage: `url(${headerImageUrl})` } : undefined}
+      >
         <div className="hero-left">
           <button className="hero-avatar" onClick={() => setPickerOpen(true)} title="Change your look">
             {theme.avatar}
@@ -82,22 +144,33 @@ export default function StudentChecklist() {
         </div>
         <div className="hero-actions">
           <button className="mine-btn" onClick={() => setPickerOpen(true)}>✨ {large ? 'My look' : 'Make it mine'}</button>
-          <button className="logout-btn" onClick={logout}>Switch</button>
+          <div className="hero-small-actions">
+            <button className="mute-btn" onClick={toggleMute} title={muted ? 'Turn sounds on' : 'Turn sounds off'}>
+              {muted ? '🔇' : '🔊'}
+            </button>
+            <button className="logout-btn" onClick={logout}>Switch</button>
+          </div>
         </div>
       </header>
 
-      {assignments.length === 0 ? (
+      {total === 0 ? (
         <div className="empty-day">
           <div className="empty-day-emoji">{theme.avatar}</div>
           <h2>{emptyLine}</h2>
         </div>
       ) : (
         <>
-          <div className="progress-track" role="progressbar" aria-valuenow={doneCount} aria-valuemax={assignments.length}>
-            <div className="progress-fill" style={{ width: `${(doneCount / assignments.length) * 100}%` }} />
-            <span className="progress-label">
-              {doneCount} of {assignments.length} done {doneCount === assignments.length ? '🎉' : ''}
-            </span>
+          <div className="progress-zone">
+            <div className="progress-track" role="progressbar" aria-valuenow={doneCount} aria-valuemax={total}>
+              <div className="progress-fill" style={{ width: `${pct}%` }} />
+              <span className="progress-runner" style={{ left: `calc(${pct}% - 18px)` }}>
+                {theme.avatar}
+              </span>
+              <span className="progress-label">
+                {doneCount} of {total} done
+              </span>
+            </div>
+            {cheer && <p className="cheer-line">{cheer}</p>}
           </div>
 
           {allDone ? (
@@ -123,10 +196,12 @@ export default function StudentChecklist() {
         </>
       )}
 
+      {burst && <Confetti size={burst} onDone={() => setBurst(null)} />}
+
       {pickerOpen && (
         <ThemePicker
           studentId={studentId}
-          current={{ palette: theme.palette, avatar: theme.avatar }}
+          current={{ palette: theme.palette, avatar: theme.avatar, headerImagePath: student?.theme?.headerImagePath ?? null }}
           onClose={() => setPickerOpen(false)}
         />
       )}

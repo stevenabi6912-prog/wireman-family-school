@@ -38,5 +38,15 @@ service firebase.storage {
       allow read: if isParent() || isOwnStudent(studentId);
       allow write: if isParent() || isOwnStudent(studentId);
     }
+
+    // Theme header pictures (cosmetic, kid-chosen): any family member can view
+    // them (they render on dashboard cards too); only that student or the
+    // parent can upload/replace. Images only, max 10 MB.
+    match /themes/{studentId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if (isParent() || isOwnStudent(studentId)) &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
   }
 }

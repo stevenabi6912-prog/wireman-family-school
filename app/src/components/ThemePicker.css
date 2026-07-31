@@ -94,3 +94,33 @@
 .palette-choice-active {
   border-color: #2a2a2a;
 }
+
+.header-image-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-upload-btn {
+  background: #f0f0f0;
+  border-radius: 12px;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.header-remove-btn {
+  background: none;
+  border: 1px solid #e0b8b0;
+  color: #b3402f;
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+}
+
+.header-image-note {
+  color: #888;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
