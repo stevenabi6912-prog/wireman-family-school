@@ -1,0 +1,70 @@
+.trail-box {
+  margin-top: 2rem;
+  background: var(--t-card, white);
+  border-radius: 18px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.trail-title {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+  color: #2a2a2a;
+}
+
+.trail-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.trail-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: max-content;
+  padding-top: 1.2rem;
+}
+
+.trail-step {
+  position: relative;
+}
+
+.trail-month {
+  position: absolute;
+  top: -1.15rem;
+  left: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.trail-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e8e5df;
+  font-size: 0.6rem;
+  color: white;
+}
+
+.trail-done {
+  background: var(--t-accent, #4c9a6a);
+}
+
+.trail-here {
+  width: 30px;
+  height: 30px;
+  font-size: 1.05rem;
+  background: #ffd75e;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  animation: bounce 1.6s ease infinite;
+}
+
+.trail-finish {
+  font-size: 1.3rem;
+  margin-left: 4px;
+}

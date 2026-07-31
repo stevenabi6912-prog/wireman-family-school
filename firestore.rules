@@ -114,6 +114,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /gradingNotes/{subjectId} {
+      allow read: if isParent();
+      allow write: if false;
+    }
+
     match /mail/{mailId} {
       allow read: if isParent();
       allow write: if false;

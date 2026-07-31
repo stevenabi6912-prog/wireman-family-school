@@ -9,6 +9,7 @@ import AssignmentCard from '../components/AssignmentCard';
 import ThemePicker from '../components/ThemePicker';
 import Confetti from '../components/Confetti';
 import BreakRoom from '../components/BreakRoom';
+import YearTrail from '../components/YearTrail';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
 import './StudentChecklist.css';
 
@@ -303,6 +304,8 @@ export default function StudentChecklist() {
           )}
         </>
       )}
+
+      <YearTrail studentId={studentId} avatar={theme.avatar} />
 
       {burst && <Confetti size={burst} onDone={() => setBurst(null)} />}
 

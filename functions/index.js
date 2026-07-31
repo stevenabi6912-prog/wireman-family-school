@@ -65,7 +65,7 @@ function mediaTypeFor(path) {
   return 'image/jpeg';
 }
 
-async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64 }) {
+async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64, parentNotes }) {
   const client = new Anthropic({ apiKey });
 
   const content = [
@@ -100,6 +100,7 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
       '',
       'Use the attached answer key / teacher guide to grade. Be encouraging but accurate,',
       'and calibrate expectations to the student\'s grade level.',
+      parentNotes ? `\nThe parent has set these grading preferences — follow them:\n${parentNotes}` : '',
       '',
       'Respond with ONLY a JSON object, no other text, in this exact shape:',
       '{"score": <number correct>, "maxScore": <number of questions graded>,',
@@ -145,6 +146,10 @@ async function runGrading(submissionId, submission) {
 
   const gradeRef = db.doc(`grades/${submission.assignmentId}`);
 
+  // Abi's learned grading preferences for this subject (see gradingTuneUp)
+  const notesSnap = await db.doc(`gradingNotes/${assignment.subjectId}`).get();
+  const parentNotes = notesSnap.exists ? notesSnap.data().notes : null;
+
   // No answer key → route to Abi's manual review queue instead of guessing.
   if (!assignment.keyPath) {
     await gradeRef.set({
@@ -174,6 +179,7 @@ async function runGrading(submissionId, submission) {
       submission,
       student,
       keyB64,
+      parentNotes,
     });
 
     await gradeRef.set({
@@ -379,14 +385,157 @@ export const sendOutbox = onDocumentCreated(
         subject: data.subject,
         text: data.text,
         html: data.html,
-        attachments: data.attachmentUrl
-          ? [{ filename: data.attachmentName ?? 'attachment.pdf', path: data.attachmentUrl }]
-          : undefined,
+        attachments: data.attachmentB64
+          ? [{ filename: data.attachmentName ?? 'attachment.pdf', content: Buffer.from(data.attachmentB64, 'base64') }]
+          : data.attachmentUrl
+            ? [{ filename: data.attachmentName ?? 'attachment.pdf', path: data.attachmentUrl }]
+            : undefined,
       });
       await event.data.ref.update({ state: 'sent', sentAt: admin.firestore.FieldValue.serverTimestamp() });
     } catch (err) {
       console.error('sendOutbox failed:', err);
       await event.data.ref.update({ state: 'error', error: String(err).slice(0, 300) });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Sunday packet: merge the coming week's printable pages (everything with a
+// page anchor) into one PDF per family and email it for one print run.
+// ---------------------------------------------------------------------------
+
+function nextSchoolWeek(todayIso) {
+  // Monday..Sunday window starting the first Monday >= today
+  const d = new Date(todayIso + 'T12:00:00');
+  const day = d.getDay(); // 0 Sun .. 6 Sat
+  const daysToMonday = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+  d.setDate(d.getDate() + daysToMonday);
+  const start = d.toLocaleDateString('sv-SE');
+  d.setDate(d.getDate() + 6);
+  return [start, d.toLocaleDateString('sv-SE')];
+}
+
+const PRINTABLE_TYPES = new Set(['worksheet', 'test']);
+const KID_NAMES = { luke: 'Luke', layla: 'Layla', logan: 'Logan', lazarus: 'Lazarus' };
+
+async function buildSundayPacket() {
+  const db = admin.firestore();
+  const [weekStart, weekEnd] = nextSchoolWeek(isoToday());
+  const snap = await db.collection('assignments')
+    .where('scheduledDate', '>=', weekStart)
+    .where('scheduledDate', '<=', weekEnd)
+    .get();
+
+  const byKid = {};
+  snap.docs.forEach((d) => {
+    const a = d.data();
+    if (!PRINTABLE_TYPES.has(a.itemType) || !a.contentPath?.includes('#page=')) return;
+    (byKid[a.studentId] = byKid[a.studentId] ?? []).push(a);
+  });
+
+  const out = await PDFDocument.create();
+  const font = await out.embedFont('Helvetica-Bold');
+  const srcCache = new Map();
+  let pageCount = 0;
+  const skipped = [];
+
+  for (const kid of STUDENT_ORDER) {
+    const items = (byKid[kid] ?? []).sort((a, b) => a.dayIndex - b.dayIndex || a.sequence - b.sequence);
+    if (!items.length) continue;
+    const cover = out.addPage([612, 792]);
+    cover.drawText(`${KID_NAMES[kid]} — week of ${weekStart}`, { x: 60, y: 700, size: 24, font });
+    cover.drawText(`${items.length} printable items`, { x: 60, y: 665, size: 14, font });
+    for (const a of items) {
+      try {
+        const [path, anchor] = a.contentPath.split('#');
+        const page = Number(anchor.match(/page=(\d+)/)?.[1]);
+        if (!srcCache.has(path)) {
+          const [buf] = await admin.storage().bucket().file(path).download();
+          srcCache.set(path, await PDFDocument.load(buf, { ignoreEncryption: true }));
+        }
+        const src = srcCache.get(path);
+        const take = Math.min(2, src.getPageCount() - (page - 1)); // anchor page + 1
+        const pages = await out.copyPages(src, Array.from({ length: take }, (_, i) => page - 1 + i));
+        pages.forEach((p) => out.addPage(p));
+        pageCount += take;
+      } catch (err) {
+        skipped.push(`${KID_NAMES[kid]}: ${a.title}`);
+        console.warn('packet skip', a.title, String(err).slice(0, 120));
+      }
+    }
+  }
+
+  if (pageCount === 0) return { weekStart, pageCount: 0, skipped: 'no school days that week — no email sent' };
+
+  const bytes = Buffer.from(await out.save());
+  const dest = `reports/packet-${weekStart}.pdf`;
+  await admin.storage().bucket().file(dest).save(bytes, { contentType: 'application/pdf' });
+
+  const mail = {
+    to: REPORT_EMAIL,
+    subject: `🖨️ Print packet — week of ${weekStart} (${pageCount} pages)`,
+    text: `The week's printable worksheets and tests for all four kids are attached.${skipped.length ? `\n\nCouldn't include: ${skipped.join('; ')}` : ''}`,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (bytes.length < 18 * 1024 * 1024) {
+    mail.attachmentB64 = bytes.toString('base64');
+    mail.attachmentName = `wireman-week-${weekStart}.pdf`;
+  } else {
+    mail.text += '\n\n(The packet was too large to attach — open the dashboard Records page to print it.)';
+  }
+  await db.collection('outbox').add(mail);
+  return { weekStart, pageCount, bytes: bytes.length };
+}
+
+export const sundayPacket = onSchedule(
+  { schedule: '0 7 * * 0', timeZone: 'America/Detroit', memory: '1GiB', timeoutSeconds: 300 },
+  async () => {
+    await buildSundayPacket();
+  }
+);
+
+export const runPacketNow = onCall({ invoker: 'public', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
+  if (request.auth?.token?.role !== 'parent') throw new HttpsError('permission-denied', 'Parent only.');
+  return await buildSundayPacket();
+});
+
+// ---------------------------------------------------------------------------
+// Grading feedback loop: monthly, learn from Abi's overrides so the grader
+// drifts toward how she actually grades. Writes gradingNotes/{subjectId}.
+// ---------------------------------------------------------------------------
+
+export const gradingTuneUp = onSchedule(
+  { schedule: '0 6 1 * *', timeZone: 'America/Detroit', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300 },
+  async () => {
+    const db = admin.firestore();
+    const snap = await db.collection('grades').where('overriddenScore', '>=', 0).get();
+    const bySubject = {};
+    snap.docs.forEach((d) => {
+      const g = d.data();
+      if (g.overriddenScore === g.score) return;
+      (bySubject[g.subjectId] = bySubject[g.subjectId] ?? []).push(
+        `auto ${g.score}/${g.maxScore} -> Abi set ${g.overriddenScore}/${g.maxScore}; grader note: ${g.misunderstandingSummary ?? 'none'}`
+      );
+    });
+    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    for (const [subjectId, cases] of Object.entries(bySubject)) {
+      if (cases.length < 2) continue;
+      const msg = await client.messages.create({
+        model: GRADING_MODEL,
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `A parent regrades her kids' homeschool work when the auto-grader misses her standards. Here are recent ${subjectId} corrections:\n${cases.join('\n')}\n\nWrite 2-4 short imperative rules the grader should follow next time to match her grading (e.g. "Accept phonetic spelling", "Give half credit for right method with arithmetic slips"). Reply with ONLY the rules, one per line.`,
+        }],
+      });
+      const notes = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+      if (notes) {
+        await db.doc(`gradingNotes/${subjectId}`).set({
+          notes,
+          casesConsidered: cases.length,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
     }
   }
 );
