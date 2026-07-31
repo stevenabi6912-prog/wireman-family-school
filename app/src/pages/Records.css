@@ -136,3 +136,10 @@
     background: white;
   }
 }
+
+.transcript-section { margin-top: 2rem; }
+.transcript-section h2 { font-size: 1.35rem; }
+.transcript-card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+@media print {
+  .transcript-section { break-before: page; }
+}

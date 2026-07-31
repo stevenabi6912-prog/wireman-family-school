@@ -44,7 +44,25 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
 
       {isActive && (
         <div className="assignment-body">
-          {assignment.instructions && <p className="assignment-instructions">{assignment.instructions}</p>}
+          {assignment.instructions && (
+            <p className="assignment-instructions">
+              {assignment.instructions}
+              {'speechSynthesis' in window && (
+                <button
+                  className="speak-btn"
+                  title="Read it to me"
+                  onClick={() => {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance(`${assignment.title}. ${assignment.instructions}`);
+                    u.rate = 0.95;
+                    window.speechSynthesis.speak(u);
+                  }}
+                >
+                  🔈
+                </button>
+              )}
+            </p>
+          )}
 
           {assignment.itemType === 'video' && (
             assignment.externalUrl ? (

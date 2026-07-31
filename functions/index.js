@@ -400,6 +400,276 @@ export const sendOutbox = onDocumentCreated(
 );
 
 // ---------------------------------------------------------------------------
+// Work-samples portfolio: assembles each kid's official packet for the
+// school — gradebook summary + their submitted work photos — as one PDF.
+// ---------------------------------------------------------------------------
+
+export const buildPortfolio = onCall(
+  { invoker: 'public', memory: '1GiB', timeoutSeconds: 540 },
+  async (request) => {
+    if (request.auth?.token?.role !== 'parent') throw new HttpsError('permission-denied', 'Parent only.');
+    const db = admin.firestore();
+    const [gradeSnap, subSnap, assignSnap, studentSnap] = await Promise.all([
+      db.collection('grades').get(),
+      db.collection('submissions').get(),
+      db.collection('assignments').get(),
+      db.collection('students').get(),
+    ]);
+    const titles = {};
+    assignSnap.docs.forEach((d) => { titles[d.id] = d.data().title; });
+    const students = {};
+    studentSnap.docs.forEach((d) => { students[d.id] = d.data(); });
+
+    const out = await PDFDocument.create();
+    const font = await out.embedFont('Helvetica-Bold');
+    const body = await out.embedFont('Helvetica');
+
+    for (const kid of STUDENT_ORDER) {
+      const s = students[kid] ?? {};
+      const cover = out.addPage([612, 792]);
+      cover.drawText('Work Samples & Grades 2026-27', { x: 60, y: 710, size: 22, font });
+      cover.drawText(`${s.name ?? kid} — Grade ${s.grade ?? ''}`, { x: 60, y: 675, size: 16, font });
+      cover.drawText('Hillsdale Classical — Offsite Program', { x: 60, y: 650, size: 12, font: body });
+
+      // gradebook lines
+      let y = 610;
+      const kidGrades = gradeSnap.docs.map((d) => d.data()).filter((g) => g.studentId === kid);
+      for (const g of kidGrades.slice(0, 35)) {
+        const score = g.overriddenScore ?? g.score;
+        const line = `${(titles[g.assignmentId] ?? g.assignmentId).slice(0, 60)}  —  ${score != null ? `${score}/${g.maxScore}` : 'reviewed by parent'}`;
+        cover.drawText(line, { x: 60, y, size: 10, font: body });
+        y -= 16;
+        if (y < 60) break;
+      }
+      if (!kidGrades.length) cover.drawText('(grades accumulate as the year progresses)', { x: 60, y, size: 10, font: body });
+
+      // photo work samples
+      const kidSubs = subSnap.docs.map((d) => d.data()).filter((x) => x.studentId === kid && x.fileUrls?.length);
+      let photos = 0;
+      for (const sub of kidSubs) {
+        for (const p of sub.fileUrls) {
+          if (photos >= 20) break;
+          try {
+            const [buf] = await admin.storage().bucket().file(p).download();
+            const img = p.toLowerCase().endsWith('.png') ? await out.embedPng(buf) : await out.embedJpg(buf);
+            const page = out.addPage([612, 792]);
+            page.drawText(`${s.name ?? kid} — ${(titles[sub.assignmentId] ?? '').slice(0, 70)}`, { x: 40, y: 760, size: 11, font });
+            const scale = Math.min(532 / img.width, 690 / img.height, 1);
+            page.drawImage(img, { x: 40, y: 740 - img.height * scale, width: img.width * scale, height: img.height * scale });
+            photos++;
+          } catch (err) {
+            console.warn('portfolio photo skip', p, String(err).slice(0, 80));
+          }
+        }
+      }
+    }
+
+    const bytes = Buffer.from(await out.save());
+    const today = isoToday();
+    await admin.storage().bucket().file(`reports/portfolio-${today}.pdf`).save(bytes, { contentType: 'application/pdf' });
+    const fits = bytes.length < 18 * 1024 * 1024;
+    const mail = {
+      to: REPORT_EMAIL,
+      subject: `📁 Work-samples portfolio — all four kids (${today})`,
+      text: fits
+        ? 'The current work-samples portfolio for all four kids is attached — gradebook summary plus their submitted work photos.'
+        : 'The portfolio grew too large to email — it is saved in the app\'s storage under reports/, and the Records page print view covers the same content.',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (fits) {
+      mail.attachmentB64 = bytes.toString('base64');
+      mail.attachmentName = `wireman-portfolio-${today}.pdf`;
+    }
+    await db.collection('outbox').add(mail);
+    return { ok: true, bytes: bytes.length };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Explorer's Club: a kid picks ANY topic and gets a fresh, age-tuned
+// mini-lesson written on the spot — short read, fun facts, 3-question quiz.
+// ---------------------------------------------------------------------------
+
+export const exploreTopic = onCall(
+  { invoker: 'public', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 120 },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+    const studentId = auth.token.role === 'student' ? auth.token.studentId : request.data?.studentId;
+    if (!studentId) throw new HttpsError('invalid-argument', 'No student.');
+    const topic = String(request.data?.topic ?? '').slice(0, 80).trim();
+    if (!topic) throw new HttpsError('invalid-argument', 'Pick a topic!');
+
+    const db = admin.firestore();
+    const student = (await db.doc(`students/${studentId}`).get()).data() ?? { grade: 5, name: studentId };
+
+    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const msg = await client.messages.create({
+      model: GRADING_MODEL,
+      max_tokens: 2500,
+      messages: [{
+        role: 'user',
+        content: `Write a mini-lesson for a grade ${student.grade} homeschooler who chose to learn about: "${topic}".
+Requirements: wholesome and age-appropriate for a child; factually accurate — if unsure of a specific number or claim, phrase it generally rather than inventing precision; ${student.grade <= 3 ? 'very simple words, short sentences' : 'engaging but not babyish'}; about a 4-5 minute read.
+If the topic is inappropriate for a child or you cannot write about it responsibly, reply with ONLY {"refused": true, "message": "<kind one-sentence redirect suggesting a similar OK topic>"}.
+Otherwise reply with ONLY JSON:
+{"title": "<fun title>", "lesson": ["<paragraph 1>", "<paragraph 2>", "<paragraph 3>", "<optional 4th>"], "funFacts": ["<fact 1>", "<fact 2>", "<fact 3>"], "quiz": [{"q": "<question about the lesson>", "a": ["<4 options>"], "c": <correct index 0-3>}, {…}, {…}]}`,
+      }],
+    });
+    const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+    let lesson;
+    try {
+      lesson = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+    } catch {
+      throw new HttpsError('internal', 'The lesson came out scrambled — try again!');
+    }
+    if (!lesson.refused) {
+      await db.collection('explorations').add({
+        studentId,
+        topic,
+        title: lesson.title,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    return lesson;
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Weekly kid reports: every Thursday evening each kid gets a personal,
+// age-tuned report — what they did, their grades, where they're shining,
+// what to work on. Shows on their own page Friday through the weekend.
+// ---------------------------------------------------------------------------
+
+async function buildKidReports(onlyKid = null) {
+  const db = admin.firestore();
+  const today = isoToday();
+  const weekAgo = new Date(today + 'T12:00:00');
+  weekAgo.setDate(weekAgo.getDate() - 6);
+  const weekStart = weekAgo.toLocaleDateString('sv-SE');
+
+  const [assignSnap, gradeSnap, studentSnap] = await Promise.all([
+    db.collection('assignments').where('scheduledDate', '>=', weekStart).where('scheduledDate', '<=', today).get(),
+    db.collection('grades').get(),
+    db.collection('students').get(),
+  ]);
+  const students = {};
+  studentSnap.docs.forEach((d) => { students[d.id] = d.data(); });
+  const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+  for (const kid of STUDENT_ORDER) {
+    if (onlyKid && kid !== onlyKid) continue;
+    const already = await db.doc(`kidReports/${kid}-${today}`).get();
+    if (already.exists) continue; // one per day max
+    const items = assignSnap.docs.map((d) => d.data()).filter((a) => a.studentId === kid);
+    if (!items.length) continue; // no school this week
+    const done = items.filter((a) => DONE.has(a.status));
+    const bySubject = {};
+    done.forEach((a) => { bySubject[a.subjectId] = (bySubject[a.subjectId] ?? 0) + 1; });
+    const slow = items.filter((a) => a.actualMinutes && a.estimatedMinutes && a.actualMinutes >= a.estimatedMinutes * 1.5);
+    const weekGrades = gradeSnap.docs.map((d) => d.data()).filter((g) => {
+      const when = g.gradedAt?.toDate?.()?.toLocaleDateString?.('sv-SE', { timeZone: 'America/Detroit' });
+      return g.studentId === kid && when && when >= weekStart;
+    }).map((g) => ({
+      subject: g.subjectId,
+      pct: (g.overriddenScore ?? g.score) != null && g.maxScore ? Math.round(((g.overriddenScore ?? g.score) / g.maxScore) * 100) : null,
+      note: g.misunderstandingSummary ?? '',
+    }));
+
+    const student = students[kid] ?? {};
+    const stats = {
+      finished: done.length,
+      assigned: items.length,
+      grades: weekGrades.filter((g) => g.pct != null),
+      slowCount: slow.length,
+    };
+
+    let ai = null;
+    try {
+      const msg = await client.messages.create({
+        model: GRADING_MODEL,
+        max_tokens: 1200,
+        messages: [{
+          role: 'user',
+          content: `Write a short weekly school report FOR a grade ${student.grade ?? 5} homeschooler named ${student.name ?? kid} to read themselves. Their week: finished ${done.length} of ${items.length} items. Subjects completed: ${JSON.stringify(bySubject)}. Grades: ${JSON.stringify(weekGrades)}. Items that took much longer than planned: ${slow.map((s) => s.title).join('; ') || 'none'}.
+Speak directly to the kid, warm and specific, ${(student.grade ?? 5) <= 3 ? 'very simple words and short sentences' : 'age-appropriate but not babyish'}. Never shame; frame weak spots as next-week goals. Do not invent facts beyond the data given.
+Reply with ONLY JSON: {"headline": "<one fun sentence>", "wins": ["<2-3 specific things they did well>"], "workOn": ["<1-2 specific gentle goals>"], "note": "<one encouraging closing line>"}`,
+        }],
+      });
+      const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+      ai = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+    } catch (err) {
+      console.error(`kid report AI failed for ${kid}:`, String(err).slice(0, 200));
+      ai = {
+        headline: `You finished ${done.length} things this week!`,
+        wins: Object.entries(bySubject).map(([s, n]) => `${n} ${s} items done`),
+        workOn: [],
+        note: 'Keep it up!',
+      };
+    }
+
+    await db.doc(`kidReports/${kid}-${today}`).set({
+      studentId: kid,
+      weekStart,
+      weekEnd: today,
+      stats,
+      ...ai,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+}
+
+// Fallback sweep Thursday evening for kids who didn't finish their day
+export const weeklyKidReports = onSchedule(
+  { schedule: '0 18 * * 4', timeZone: 'America/Detroit', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300 },
+  async () => {
+    await buildKidReports();
+  }
+);
+
+// The real magic: the report lands the moment a kid finishes the week's
+// LAST item (normally Thursday right after school).
+export const kidReportOnFinish = onDocumentUpdated(
+  { document: 'assignments/{assignmentId}', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 120 },
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    if (DONE.has(before.status) || !DONE.has(after.status)) return; // only fire on becoming done
+    const kid = after.studentId;
+    const db = admin.firestore();
+    const today = isoToday();
+    // Is today the last school day of this kid's week? (nothing scheduled
+    // tomorrow..Sunday)
+    const d = new Date(today + 'T12:00:00');
+    const daysToSunday = (7 - d.getDay()) % 7;
+    if (daysToSunday === 0) return; // Sunday itself: weekly cycle over
+    const sunday = new Date(d);
+    sunday.setDate(d.getDate() + daysToSunday);
+    const restOfWeek = await db.collection('assignments')
+      .where('studentId', '==', kid)
+      .where('scheduledDate', '>', today)
+      .where('scheduledDate', '<=', sunday.toLocaleDateString('sv-SE'))
+      .limit(1)
+      .get();
+    if (!restOfWeek.empty) return; // more school days coming this week
+    // Are ALL of today's items done?
+    const todaySnap = await db.collection('assignments')
+      .where('studentId', '==', kid)
+      .where('scheduledDate', '==', today)
+      .get();
+    const allDone = todaySnap.docs.length > 0 && todaySnap.docs.every((x) => DONE.has(x.data().status));
+    if (!allDone) return;
+    await buildKidReports(kid);
+  }
+);
+
+export const runKidReportsNow = onCall({ invoker: 'public', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300 }, async (request) => {
+  if (request.auth?.token?.role !== 'parent') throw new HttpsError('permission-denied', 'Parent only.');
+  await buildKidReports();
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
 // Friday wins: the celebration email — best grades, days finished, bonus
 // items banked, week's trail progress. The one to forward to grandparents.
 // ---------------------------------------------------------------------------

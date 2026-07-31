@@ -116,6 +116,37 @@ export default function Records() {
         );
       })}
       <p className="records-footnote">* score set by parent</p>
+
+      <section className="transcript-section">
+        <h2>8th Grade Transcript — 2026–27</h2>
+        <p className="records-none no-print">Course grades fill in as the year's work is graded. Print this page for the official copy.</p>
+        {['luke', 'layla'].map((id) => (
+          <div key={id} className="records-student transcript-card">
+            <h3>{students[id]?.name ?? id} — Grade 8, Hillsdale Classical (Offsite)</h3>
+            <table className="records-table">
+              <thead>
+                <tr><th>Course</th><th>Curriculum</th><th>Grade</th></tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Algebra 1', 'Math-U-See Algebra 1', 'math'],
+                  ['English 8 — Grammar & Composition', 'Fix It! Grammar L5 · IEW U.S. History-Based Writing', 'ela'],
+                  ['English 8 — Composition', 'IEW U.S. History-Based Writing', 'writing'],
+                  ['Medieval History', 'Story of the World Vol. 2', 'history'],
+                  ['Earth Science', 'Elemental Science (Logic Stage)', 'science'],
+                  ['Bible', 'Answers in Genesis', 'bible'],
+                ].map(([course, curric, subj]) => (
+                  <tr key={course}>
+                    <td>{course}</td>
+                    <td>{curric}</td>
+                    <td>{averages[id]?.[subj] ? `${averages[id][subj].avg}%` : 'in progress'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

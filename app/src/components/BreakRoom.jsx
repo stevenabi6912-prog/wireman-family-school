@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BREAK_SECONDS, loadGame, saveGame } from '../lib/breaks';
-import { makeSudoku, makeWordSearch, WORD_THEMES, SCRAMBLES, TRIVIA } from './breakGames';
+import { makeSudoku, makeWordSearch, WORD_THEMES, SCRAMBLES, TRIVIA, TYPING_WORDS } from './breakGames';
 import { playDing, playFanfare } from '../lib/sounds';
 import './BreakRoom.css';
 
@@ -41,6 +41,7 @@ export default function BreakRoom({ studentId, large, onClose }) {
             <button onClick={() => setGame('wordsearch')}>🔍 Word Search</button>
             <button onClick={() => setGame('builder')}>🔤 Word Builder</button>
             <button onClick={() => setGame('trivia')}>🏰 Castle Trivia</button>
+            <button onClick={() => setGame('typing')}>⌨️ Typing Sprint</button>
           </div>
         ) : (
           <>
@@ -49,6 +50,7 @@ export default function BreakRoom({ studentId, large, onClose }) {
             {game === 'wordsearch' && <WordSearch studentId={studentId} />}
             {game === 'builder' && <WordBuilder studentId={studentId} />}
             {game === 'trivia' && <Trivia studentId={studentId} />}
+            {game === 'typing' && <TypingSprint studentId={studentId} />}
           </>
         )}
         {secondsLeft > 0 && (
@@ -230,6 +232,87 @@ function WordBuilder({ studentId }) {
       {flash === 'already' && <p className="builder-flash-no">Already got that one!</p>}
       <p className="ws-words">{got.map((w) => <span key={w} className="ws-word-done">{w}</span>)}</p>
       <p className="game-hint">{got.length} of {puzzle.words.length} found {got.length >= 10 && <button onClick={newPuzzle}>New letters?</button>}</p>
+    </div>
+  );
+}
+
+// ---------- Typing sprint: 45 seconds, type the words, beat your best ----------
+function TypingSprint({ studentId }) {
+  const best = loadGame(studentId, 'typing')?.best ?? 0;
+  const [running, setRunning] = useState(false);
+  const [left, setLeft] = useState(45);
+  const [word, setWord] = useState('');
+  const [entry, setEntry] = useState('');
+  const [score, setScore] = useState(0);
+  const [finalScore, setFinalScore] = useState(null);
+
+  function nextWord() {
+    setWord(TYPING_WORDS[Math.floor(Math.random() * TYPING_WORDS.length)]);
+  }
+
+  function start() {
+    setScore(0);
+    setFinalScore(null);
+    setLeft(45);
+    setRunning(true);
+    nextWord();
+    const t = setInterval(() => {
+      setLeft((s) => {
+        if (s <= 1) {
+          clearInterval(t);
+          setRunning(false);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  }
+
+  useEffect(() => {
+    if (!running && left === 0) {
+      setFinalScore(score);
+      const prior = loadGame(studentId, 'typing')?.best ?? 0;
+      if (score > prior) {
+        saveGame(studentId, 'typing', { best: score });
+        playFanfare();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, left]);
+
+  function onType(v) {
+    setEntry(v);
+    if (v.trim().toLowerCase() === word) {
+      setScore((s) => s + 1);
+      playDing();
+      setEntry('');
+      nextWord();
+    }
+  }
+
+  return (
+    <div className="game-box">
+      <p className="game-hint">Type the word exactly, as fast as you can! Best: {Math.max(best, finalScore ?? 0)} words</p>
+      {!running ? (
+        <div>
+          {finalScore !== null && <h3 className="trivia-q">⏱️ {finalScore} words{finalScore > best ? ' — NEW BEST! 🏆' : ''}</h3>}
+          <button className="submit-btn" onClick={start}>{finalScore === null ? 'Start 45-second sprint' : 'Go again!'}</button>
+        </div>
+      ) : (
+        <div>
+          <h3 className="typing-word">{word}</h3>
+          <input
+            className="typing-input"
+            autoFocus
+            value={entry}
+            onChange={(e) => onType(e.target.value)}
+            placeholder="type here"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+          <p className="game-hint">⏱️ {left}s · {score} words</p>
+        </div>
+      )}
     </div>
   );
 }

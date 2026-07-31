@@ -11,6 +11,8 @@ import Confetti from '../components/Confetti';
 import BreakRoom from '../components/BreakRoom';
 import YearTrail from '../components/YearTrail';
 import SchoolCalendar from '../components/SchoolCalendar';
+import WeeklyReport from '../components/WeeklyReport';
+import ExplorerClub from '../components/ExplorerClub';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
 import './StudentChecklist.css';
 
@@ -271,6 +273,7 @@ export default function StudentChecklist() {
             large={large}
             uncapped={bonusUncapped}
           />
+          <ExplorerClub large={large} />
         </div>
       ) : (
         <>
@@ -304,6 +307,7 @@ export default function StudentChecklist() {
                 studentId={studentId}
                 large={large}
               />
+              <ExplorerClub large={large} />
             </div>
           ) : (
             <div className="assignment-list">
@@ -321,6 +325,8 @@ export default function StudentChecklist() {
           )}
         </>
       )}
+
+      <WeeklyReport studentId={studentId} justFinished={allDone} />
 
       <YearTrail studentId={studentId} avatar={theme.avatar} />
 

@@ -114,6 +114,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /kidReports/{reportId} {
+      allow read: if isParent() || isStudent(resource.data.studentId);
+      allow write: if false;
+    }
+
+    match /explorations/{id} {
+      allow read: if isParent();
+      allow write: if false;
+    }
+
     match /gradingNotes/{subjectId} {
       allow read: if isParent();
       allow write: if false;

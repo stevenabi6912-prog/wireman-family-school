@@ -216,6 +216,18 @@ describe('reports and mail', () => {
   });
 });
 
+describe('kidReports', () => {
+  it('a kid reads their own weekly report, not a sibling\'s; nobody writes', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'kidReports/luke-2026-08-20'), { studentId: 'luke', headline: 'x' });
+    });
+    await assertSucceeds(getDoc(doc(asLuke(), 'kidReports/luke-2026-08-20')));
+    await assertFails(getDoc(doc(asLayla(), 'kidReports/luke-2026-08-20')));
+    await assertSucceeds(getDoc(doc(asAbi(), 'kidReports/luke-2026-08-20')));
+    await assertFails(setDoc(doc(asLuke(), 'kidReports/luke-2026-08-21'), { studentId: 'luke' }));
+  });
+});
+
 describe('grades', () => {
   it('a student can read their own grade', async () => {
     await assertSucceeds(getDoc(doc(asLuke(), 'grades/luke-1')));

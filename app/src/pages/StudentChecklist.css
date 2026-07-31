@@ -486,3 +486,14 @@
   margin: 0; white-space: pre-wrap; font-family: inherit;
   font-size: 1.05rem; color: #4a3f15; line-height: 1.6;
 }
+
+.speak-btn {
+  margin-left: 0.5rem;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  vertical-align: middle;
+}

@@ -77,6 +77,14 @@ export const SCRAMBLES = [
   { letters: 'GARDEN', words: ['GARDEN', 'DANGER', 'GANDER', 'RANGED', 'GRAND', 'GRADE', 'ANGER', 'RANGE', 'DARE', 'READ', 'DEAR', 'RAGE', 'DEN', 'RAG', 'EAR', 'AND'] },
 ];
 
+// ---------- Typing sprint ----------
+export const TYPING_WORDS = [
+  'the', 'and', 'castle', 'knight', 'river', 'planet', 'story', 'friend', 'school', 'happy',
+  'jump', 'quick', 'brown', 'earth', 'family', 'dragon', 'wonder', 'bright', 'garden', 'winter',
+  'strong', 'answer', 'pencil', 'window', 'basket', 'monkey', 'purple', 'rocket', 'silver', 'thunder',
+  'because', 'morning', 'kitchen', 'history', 'science', 'fishing', 'reading', 'writing', 'numbers', 'explore',
+];
+
 // ---------- Castle trivia (SOTW Vol 2 era) ----------
 export const TRIVIA = [
   { q: 'What was the name of the wall knights defended around a castle?', a: ['Battlement', 'Bookshelf', 'Backyard', 'Baseline'], c: 0 },
