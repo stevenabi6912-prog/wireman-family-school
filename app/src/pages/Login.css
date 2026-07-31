@@ -1,0 +1,153 @@
+.login-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem 1rem;
+  background: #f4f2ee;
+  position: relative;
+}
+
+.login-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  text-align: center;
+  color: #2a2a2a;
+  margin: 0;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 720px;
+}
+
+.name-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  border: none;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2a2a2a;
+  transition: transform 0.12s ease;
+  min-height: 160px;
+  touch-action: manipulation;
+}
+
+.name-card:active {
+  transform: scale(0.96);
+}
+
+.name-card-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--card-color, #888);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+}
+
+.parent-divider {
+  width: 100%;
+  max-width: 720px;
+  border-top: 1px dashed #ccc;
+  margin-top: 0.5rem;
+}
+
+.parent-card {
+  max-width: 320px;
+  min-height: 120px;
+  font-size: 1.25rem;
+  background: #ece8f5;
+}
+
+.back-link {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #555;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+
+.pin-dots {
+  display: flex;
+  gap: 1rem;
+}
+
+.pin-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #999;
+  background: transparent;
+}
+
+.pin-dot-filled {
+  background: #555;
+  border-color: #555;
+}
+
+.pin-dots-error .pin-dot {
+  border-color: #c0392b;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 84px);
+  gap: 1rem;
+}
+
+.keypad-btn {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: none;
+  background: white;
+  font-size: 2rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.keypad-btn:active {
+  transform: scale(0.94);
+}
+
+.keypad-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.keypad-btn-secondary {
+  background: #e6e6e6;
+  font-size: 1.5rem;
+}
+
+.keypad-btn-confirm {
+  background: #4c9a6a;
+  color: white;
+  font-size: 2rem;
+}
+
+.login-error {
+  color: #c0392b;
+  font-size: 1.1rem;
+}
