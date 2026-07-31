@@ -1,0 +1,235 @@
+import { readFileSync } from 'node:fs';
+import { beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest';
+import {
+  initializeTestEnvironment,
+  assertFails,
+  assertSucceeds,
+} from '@firebase/rules-unit-testing';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+
+let testEnv;
+
+beforeAll(async () => {
+  testEnv = await initializeTestEnvironment({
+    projectId: 'homeschool-rules-test',
+    firestore: {
+      rules: readFileSync('firestore.rules', 'utf8'),
+      host: '127.0.0.1',
+      port: 8080,
+    },
+  });
+});
+
+afterAll(async () => {
+  await testEnv.cleanup();
+});
+
+beforeEach(async () => {
+  await testEnv.clearFirestore();
+
+  // Seed as admin (bypasses rules) so every test starts from the same fixtures.
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, 'users/luke-uid'), { role: 'student', studentId: 'luke' });
+    await setDoc(doc(db, 'users/layla-uid'), { role: 'student', studentId: 'layla' });
+    await setDoc(doc(db, 'users/abi-uid'), { role: 'parent' });
+
+    await setDoc(doc(db, 'students/luke'), { name: 'Luke', grade: 8 });
+    await setDoc(doc(db, 'students/layla'), { name: 'Layla', grade: 8 });
+
+    await setDoc(doc(db, 'assignments/luke-1'), {
+      studentId: 'luke',
+      subjectId: 'ela',
+      scheduledDate: '2026-08-17',
+      keyPath: 'keys/ela/8/answers.pdf',
+      status: 'not_started',
+    });
+    await setDoc(doc(db, 'assignments/layla-1'), {
+      studentId: 'layla',
+      subjectId: 'ela',
+      scheduledDate: '2026-08-17',
+      keyPath: 'keys/ela/8/answers.pdf',
+      status: 'not_started',
+    });
+
+    await setDoc(doc(db, 'grades/luke-1'), {
+      assignmentId: 'luke-1',
+      studentId: 'luke',
+      score: 9,
+      maxScore: 10,
+    });
+  });
+});
+
+// Role/studentId come from Auth custom claims (second arg), matching how the
+// real app provisions accounts — see scripts/seed-users.js.
+function asLuke() {
+  return testEnv.authenticatedContext('luke-uid', { role: 'student', studentId: 'luke' }).firestore();
+}
+function asLayla() {
+  return testEnv.authenticatedContext('layla-uid', { role: 'student', studentId: 'layla' }).firestore();
+}
+function asAbi() {
+  return testEnv.authenticatedContext('abi-uid', { role: 'parent' }).firestore();
+}
+function asAnon() {
+  return testEnv.unauthenticatedContext().firestore();
+}
+
+describe('users', () => {
+  it('a student can read their own user doc', async () => {
+    await assertSucceeds(getDoc(doc(asLuke(), 'users/luke-uid')));
+  });
+
+  it('a student cannot read a sibling\'s user doc', async () => {
+    await assertFails(getDoc(doc(asLuke(), 'users/layla-uid')));
+  });
+
+  it('a student cannot write any user doc', async () => {
+    await assertFails(updateDoc(doc(asLuke(), 'users/luke-uid'), { role: 'parent' }));
+  });
+});
+
+describe('students', () => {
+  it('a student can read their own student doc', async () => {
+    await assertSucceeds(getDoc(doc(asLuke(), 'students/luke')));
+  });
+
+  it('a student cannot read a sibling\'s student doc', async () => {
+    await assertFails(getDoc(doc(asLuke(), 'students/layla')));
+  });
+
+  it('a student cannot write to any student doc', async () => {
+    await assertFails(updateDoc(doc(asLuke(), 'students/luke'), { grade: 9 }));
+  });
+
+  it('the parent can read and write any student doc', async () => {
+    await assertSucceeds(getDoc(doc(asAbi(), 'students/layla')));
+    await assertSucceeds(updateDoc(doc(asAbi(), 'students/layla'), { grade: 9 }));
+  });
+
+  it('an unauthenticated request is denied', async () => {
+    await assertFails(getDoc(doc(asAnon(), 'students/luke')));
+  });
+});
+
+describe('assignments', () => {
+  it('a student can read their own assignment', async () => {
+    await assertSucceeds(getDoc(doc(asLuke(), 'assignments/luke-1')));
+  });
+
+  it('a student cannot read a sibling\'s assignment', async () => {
+    await assertFails(getDoc(doc(asLuke(), 'assignments/layla-1')));
+  });
+
+  it('a student can flip their own assignment status to in_progress', async () => {
+    await assertSucceeds(
+      updateDoc(doc(asLuke(), 'assignments/luke-1'), {
+        status: 'in_progress',
+        updatedAt: 'now',
+      })
+    );
+  });
+
+  it('a student cannot change the scheduledDate on their own assignment', async () => {
+    await assertFails(
+      updateDoc(doc(asLuke(), 'assignments/luke-1'), { scheduledDate: '2026-08-18' })
+    );
+  });
+
+  it('a student cannot read or change the keyPath field', async () => {
+    await assertFails(
+      updateDoc(doc(asLuke(), 'assignments/luke-1'), {
+        status: 'in_progress',
+        keyPath: 'keys/hacked.pdf',
+      })
+    );
+  });
+
+  it('a student cannot set an arbitrary/invalid status', async () => {
+    await assertFails(
+      updateDoc(doc(asLuke(), 'assignments/luke-1'), { status: 'graded' })
+    );
+  });
+
+  it('a student cannot create a new assignment for themselves', async () => {
+    await assertFails(
+      setDoc(doc(asLuke(), 'assignments/luke-2'), {
+        studentId: 'luke',
+        subjectId: 'ela',
+        scheduledDate: '2026-08-18',
+        status: 'not_started',
+      })
+    );
+  });
+
+  it('the parent can reschedule any assignment', async () => {
+    await assertSucceeds(
+      updateDoc(doc(asAbi(), 'assignments/luke-1'), { scheduledDate: '2026-08-19' })
+    );
+  });
+});
+
+describe('grades', () => {
+  it('a student can read their own grade', async () => {
+    await assertSucceeds(getDoc(doc(asLuke(), 'grades/luke-1')));
+  });
+
+  it('a student cannot read a sibling\'s grade', async () => {
+    await assertFails(getDoc(doc(asLayla(), 'grades/luke-1')));
+  });
+
+  it('a student can never write a grade, even their own', async () => {
+    await assertFails(updateDoc(doc(asLuke(), 'grades/luke-1'), { score: 10 }));
+  });
+
+  it('the parent can override a grade', async () => {
+    await assertSucceeds(updateDoc(doc(asAbi(), 'grades/luke-1'), { overriddenScore: 10 }));
+  });
+});
+
+describe('submissions', () => {
+  it('a student can create their own submission', async () => {
+    await assertSucceeds(
+      setDoc(doc(asLuke(), 'submissions/luke-1'), {
+        assignmentId: 'luke-1',
+        studentId: 'luke',
+        isDraft: true,
+      })
+    );
+  });
+
+  it('a student cannot create a submission claiming to be a sibling', async () => {
+    await assertFails(
+      setDoc(doc(asLuke(), 'submissions/fake-1'), {
+        assignmentId: 'layla-1',
+        studentId: 'layla',
+        isDraft: true,
+      })
+    );
+  });
+
+  it('a student cannot edit a submission once it is no longer a draft', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'submissions/luke-1'), {
+        assignmentId: 'luke-1',
+        studentId: 'luke',
+        isDraft: false,
+      });
+    });
+    await assertFails(
+      updateDoc(doc(asLuke(), 'submissions/luke-1'), { answers: ['changed'] })
+    );
+  });
+
+  it('a student cannot delete their own submission', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'submissions/luke-1'), {
+        assignmentId: 'luke-1',
+        studentId: 'luke',
+        isDraft: true,
+      });
+    });
+    await assertFails(deleteDoc(doc(asLuke(), 'submissions/luke-1')));
+  });
+});
