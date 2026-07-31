@@ -216,3 +216,130 @@
   background: #fdeade;
   color: #9c5518;
 }
+
+/* struggle flags */
+.struggle-section, .review-section {
+  margin-top: 2rem;
+}
+
+.struggle-section h2, .review-section h2 {
+  font-size: 1.25rem;
+  color: #2a2a2a;
+  margin-bottom: 0.75rem;
+}
+
+.struggle-empty {
+  background: white;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  color: #2c7a48;
+}
+
+.struggle-card {
+  background: #fff8f0;
+  border-left: 5px solid #e0a23a;
+  border-radius: 12px;
+  padding: 0.9rem 1.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.struggle-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.struggle-card ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #5a4a2f;
+  line-height: 1.55;
+}
+
+/* review queue */
+.review-count {
+  background: #b3402f;
+  color: white;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.85rem;
+  vertical-align: middle;
+}
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.review-row {
+  background: white;
+  border-radius: 14px;
+  padding: 0.9rem 1.2rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.review-row-main {
+  flex: 1;
+  min-width: 260px;
+}
+
+.review-score {
+  margin-left: 0.75rem;
+  font-weight: 700;
+  color: #666;
+}
+
+.review-reason {
+  margin: 0.3rem 0 0;
+  color: #9c5518;
+  font-size: 0.9rem;
+}
+
+.review-note {
+  margin: 0.3rem 0 0;
+  color: #666;
+  font-size: 0.88rem;
+  font-style: italic;
+}
+
+.review-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.review-actions input {
+  width: 90px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
+.review-actions button {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.records-link-row {
+  margin-top: 2rem;
+}
+
+.records-link {
+  display: inline-block;
+  background: #2a2a2a;
+  color: white;
+  border-radius: 999px;
+  padding: 0.7rem 1.4rem;
+  text-decoration: none;
+  font-weight: 700;
+}

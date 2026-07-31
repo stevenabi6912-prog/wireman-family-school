@@ -1,0 +1,138 @@
+.records-screen {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  background: #f6f4f0;
+  min-height: 100dvh;
+}
+
+.records-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.records-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  flex: 1;
+}
+
+.records-back {
+  color: #555;
+  text-decoration: none;
+}
+
+.records-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.records-actions select,
+.records-actions button {
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.records-student {
+  background: white;
+  border-radius: 14px;
+  padding: 1.1rem 1.3rem;
+  margin-bottom: 1rem;
+}
+
+.records-student h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.records-averages {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.75rem;
+}
+
+.avg-chip {
+  background: #eef2f7;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.records-none {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.records-table th {
+  text-align: left;
+  color: #777;
+  font-weight: 600;
+  border-bottom: 2px solid #eee;
+  padding: 0.4rem 0.5rem;
+}
+
+.records-table td {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0.45rem 0.5rem;
+}
+
+.records-footnote {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.print-only {
+  display: none;
+}
+
+/* Clean print output: white background, no controls, tables intact */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .print-title {
+    font-size: 16pt;
+    margin-bottom: 12pt;
+  }
+
+  .records-screen {
+    background: white;
+    padding: 0;
+    max-width: none;
+  }
+
+  .records-student {
+    box-shadow: none;
+    border: none;
+    padding: 0 0 12pt;
+    break-inside: avoid-page;
+  }
+
+  .records-table {
+    font-size: 9pt;
+  }
+
+  .avg-chip {
+    border: 1px solid #ccc;
+    background: white;
+  }
+}

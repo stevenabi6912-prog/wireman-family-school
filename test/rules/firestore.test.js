@@ -182,6 +182,22 @@ describe('assignments', () => {
   });
 });
 
+describe('reports and mail', () => {
+  it('the parent can read a nightly report; a student cannot', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'reports/2026-08-17'), { summary: 'x' });
+    });
+    await assertSucceeds(getDoc(doc(asAbi(), 'reports/2026-08-17')));
+    await assertFails(getDoc(doc(asLuke(), 'reports/2026-08-17')));
+  });
+
+  it('nobody can write reports or mail from the client, even the parent', async () => {
+    await assertFails(setDoc(doc(asAbi(), 'reports/2026-08-18'), { summary: 'x' }));
+    await assertFails(setDoc(doc(asAbi(), 'mail/m1'), { to: 'x@y.z' }));
+    await assertFails(setDoc(doc(asLuke(), 'mail/m2'), { to: 'x@y.z' }));
+  });
+});
+
 describe('grades', () => {
   it('a student can read their own grade', async () => {
     await assertSucceeds(getDoc(doc(asLuke(), 'grades/luke-1')));

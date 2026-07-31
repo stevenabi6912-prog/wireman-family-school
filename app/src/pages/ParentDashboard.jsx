@@ -9,9 +9,12 @@ import {
   daysOverdue,
   DONE_STATUSES,
 } from '../lib/parentData';
+import { Link } from 'react-router-dom';
 import { todayISO } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { projectYear } from '../lib/reflow';
+import { watchAllGrades, gradePct, overrideGrade, approveGrade } from '../lib/grades';
+import { computeStruggleFlags } from '../lib/struggles';
 import DaysOff from '../components/DaysOff';
 import './ParentDashboard.css';
 
@@ -31,13 +34,17 @@ export default function ParentDashboard() {
   const [year, setYear] = useState(null); // { family, projectedEnd, targetEnd }
   const today = todayISO();
 
+  const [grades, setGrades] = useState([]);
+
   useEffect(() => {
     const unsubA = watchAssignmentsThroughToday(setAssignments);
     const unsubS = watchStudents(setStudents);
+    const unsubG = watchAllGrades(setGrades);
     projectYear().then(setYear).catch(() => {});
     return () => {
       unsubA();
       unsubS();
+      unsubG();
     };
   }, []);
 
@@ -66,6 +73,15 @@ export default function ParentDashboard() {
         (a, b) => a.scheduledDate.localeCompare(b.scheduledDate)
       ),
     [byStudent]
+  );
+
+  const struggleFlags = useMemo(
+    () => computeStruggleFlags({ grades, assignments: assignments ?? [] }),
+    [grades, assignments]
+  );
+  const reviewQueue = useMemo(
+    () => grades.filter((g) => g.needsManualReview).sort((a, b) => (b.gradedAt?.seconds ?? 0) - (a.gradedAt?.seconds ?? 0)),
+    [grades]
   );
 
   if (!students || !assignments) {
@@ -167,7 +183,73 @@ export default function ParentDashboard() {
         )}
       </section>
 
+      <section className="struggle-section">
+        <h2>Worth a look</h2>
+        {Object.keys(struggleFlags).length === 0 ? (
+          <p className="struggle-empty">No struggle patterns detected right now.</p>
+        ) : (
+          STUDENT_ORDER.filter((id) => struggleFlags[id]?.length).map((id) => (
+            <div key={id} className="struggle-card">
+              <h3>{resolveTheme(id, students[id]?.theme).avatar} {students[id]?.name}</h3>
+              <ul>
+                {struggleFlags[id].map((text, i) => (
+                  <li key={i}>{text}</li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section className="review-section">
+        <h2>Grades waiting on you {reviewQueue.length > 0 && <span className="review-count">{reviewQueue.length}</span>}</h2>
+        {reviewQueue.length === 0 ? (
+          <p className="struggle-empty">Review queue is empty. ✅</p>
+        ) : (
+          <ul className="review-list">
+            {reviewQueue.map((g) => (
+              <ReviewRow key={g.id} grade={g} studentName={students[g.studentId]?.name ?? g.studentId} />
+            ))}
+          </ul>
+        )}
+      </section>
+
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
+
+      <p className="records-link-row">
+        <Link to="/records" className="records-link">📄 Gradebook & printable records</Link>
+      </p>
     </div>
+  );
+}
+
+function ReviewRow({ grade, studentName }) {
+  const [value, setValue] = useState('');
+  const pct = gradePct(grade);
+  return (
+    <li className="review-row">
+      <div className="review-row-main">
+        <strong>{studentName}</strong> — {grade.subjectId} — {grade.assignmentId}
+        <span className="review-score">{pct == null ? 'no score' : `${grade.score}/${grade.maxScore}`}</span>
+        <p className="review-reason">{grade.reviewReason ?? 'Flagged for review'}</p>
+        {grade.misunderstandingSummary && <p className="review-note">“{grade.misunderstandingSummary}”</p>}
+      </div>
+      <div className="review-actions">
+        <input
+          type="number"
+          placeholder="New score"
+          min="0"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          onClick={() => value !== '' && overrideGrade(grade.id, Number(value))}
+          disabled={value === ''}
+        >
+          Set score
+        </button>
+        <button onClick={() => approveGrade(grade.id)}>Looks right</button>
+      </div>
+    </li>
   );
 }

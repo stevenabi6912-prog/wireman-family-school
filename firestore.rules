@@ -98,5 +98,19 @@ service cloud.firestore {
       allow read: if isParent() || isStudent(resource.data.studentId);
       allow write: if isParent();
     }
+
+    // ---- reports: nightly summaries written by the scheduled Cloud Function
+    //      (admin SDK). Parent-only reading; nobody writes from the client. ----
+    match /reports/{reportId} {
+      allow read: if isParent();
+      allow write: if false;
+    }
+
+    // ---- mail: outbound email queue consumed by the firestore-send-email
+    //      extension. Function-written only; parent may read for debugging. ----
+    match /mail/{mailId} {
+      allow read: if isParent();
+      allow write: if false;
+    }
   }
 }

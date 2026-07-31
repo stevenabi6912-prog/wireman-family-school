@@ -1,5 +1,6 @@
-import { onRequest } from 'firebase-functions/v2/https';
+import { onRequest, onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentUpdated, onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import admin from 'firebase-admin';
 import Anthropic from '@anthropic-ai/sdk';
@@ -226,3 +227,104 @@ export const gradeSubmissionOnCreate = onDocumentCreated(
     await runGrading(event.params.submissionId, data);
   }
 );
+
+// ---------------------------------------------------------------------------
+// Nightly report: what each kid finished, what's missing, grades posted today.
+// Runs school evenings; writes reports/{date} (parent-readable) and queues an
+// email doc for the firestore-send-email extension (no-op until installed).
+// ---------------------------------------------------------------------------
+
+const REPORT_EMAIL = 'stevenabi6912@gmail.com';
+const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
+const DONE = new Set(['submitted', 'graded', 'waived']);
+
+function isoToday(tz = 'America/Detroit') {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: tz }); // YYYY-MM-DD
+}
+
+async function buildNightlyReport() {
+  const db = admin.firestore();
+  const today = isoToday();
+
+  const [assignSnap, gradeSnap, studentSnap] = await Promise.all([
+    db.collection('assignments').where('scheduledDate', '<=', today).get(),
+    db.collection('grades').get(),
+    db.collection('students').get(),
+  ]);
+  const students = {};
+  studentSnap.docs.forEach((d) => { students[d.id] = d.data(); });
+
+  const perStudent = {};
+  for (const id of STUDENT_ORDER) {
+    perStudent[id] = { name: students[id]?.name ?? id, completedToday: [], missing: [], gradesToday: [] };
+  }
+  assignSnap.docs.forEach((d) => {
+    const a = d.data();
+    const bucket = perStudent[a.studentId];
+    if (!bucket) return;
+    if (a.scheduledDate === today && DONE.has(a.status)) bucket.completedToday.push(a.title);
+    if (!DONE.has(a.status) && a.scheduledDate <= today) bucket.missing.push(`${a.title} (${a.scheduledDate})`);
+  });
+  gradeSnap.docs.forEach((d) => {
+    const g = d.data();
+    const when = g.gradedAt?.toDate?.()?.toLocaleDateString?.('sv-SE', { timeZone: 'America/Detroit' });
+    if (when !== today) return;
+    const bucket = perStudent[g.studentId];
+    if (!bucket) return;
+    const score = g.overriddenScore ?? g.score;
+    bucket.gradesToday.push(
+      score == null
+        ? `${g.assignmentId}: waiting for your review`
+        : `${g.assignmentId}: ${score}/${g.maxScore}${g.needsManualReview ? ' (flagged for review)' : ''}`
+    );
+  });
+
+  const lines = [`Wireman Family School — evening report for ${today}`, ''];
+  for (const id of STUDENT_ORDER) {
+    const s = perStudent[id];
+    lines.push(`${s.name}:`);
+    lines.push(`  Done today: ${s.completedToday.length ? s.completedToday.join('; ') : 'nothing completed'}`);
+    if (s.missing.length) lines.push(`  Missing (${s.missing.length}): ${s.missing.slice(0, 5).join('; ')}${s.missing.length > 5 ? '…' : ''}`);
+    if (s.gradesToday.length) lines.push(`  Grades posted: ${s.gradesToday.join('; ')}`);
+    lines.push('');
+  }
+  const text = lines.join('\n');
+
+  await db.doc(`reports/${today}`).set({
+    date: today,
+    perStudent,
+    text,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Queue for the firestore-send-email extension (harmless until installed).
+  await db.collection('mail').add({
+    to: REPORT_EMAIL,
+    message: {
+      subject: `School report ${today} — ${STUDENT_ORDER.map((id) => {
+        const s = perStudent[id];
+        return `${s.name} ${s.completedToday.length}✓${s.missing.length ? ` ${s.missing.length}!` : ''}`;
+      }).join(', ')}`,
+      text,
+    },
+  });
+  return today;
+}
+
+export const nightlyReport = onSchedule(
+  { schedule: '30 17 * * 1-4', timeZone: 'America/Detroit' },
+  async () => {
+    await buildNightlyReport();
+  }
+);
+
+// Manual trigger so Abi (or a test) can generate tonight's report on demand.
+// invoker 'public' opens the HTTPS gateway; the parent-role check inside is
+// the real gate (same model as every Firebase callable).
+export const runReportNow = onCall({ invoker: 'public' }, async (request) => {
+  if (request.auth?.token?.role !== 'parent') {
+    throw new HttpsError('permission-denied', 'Parent only.');
+  }
+  const date = await buildNightlyReport();
+  return { ok: true, date };
+});
