@@ -211,6 +211,7 @@ describe('reports and mail', () => {
   it('nobody can write reports or mail from the client, even the parent', async () => {
     await assertFails(setDoc(doc(asAbi(), 'reports/2026-08-18'), { summary: 'x' }));
     await assertFails(setDoc(doc(asAbi(), 'mail/m1'), { to: 'x@y.z' }));
+    await assertFails(setDoc(doc(asAbi(), 'outbox/o1'), { to: 'x@y.z' }));
     await assertFails(setDoc(doc(asLuke(), 'mail/m2'), { to: 'x@y.z' }));
   });
 });

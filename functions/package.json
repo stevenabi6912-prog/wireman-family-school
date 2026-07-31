@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.32.1",
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.1.1",
+    "nodemailer": "^9.0.3",
     "pdf-lib": "^1.17.1"
   }
 }

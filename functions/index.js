@@ -5,6 +5,7 @@ import { defineSecret } from 'firebase-functions/params';
 import admin from 'firebase-admin';
 import Anthropic from '@anthropic-ai/sdk';
 import { PDFDocument } from 'pdf-lib';
+import nodemailer from 'nodemailer';
 
 admin.initializeApp();
 
@@ -30,6 +31,10 @@ async function sliceKeyPdf(buf, anchorPage) {
 // The Anthropic API key lives only here, as a Firebase secret — never in
 // frontend code. Set it with: firebase functions:secrets:set ANTHROPIC_API_KEY
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
+// Gmail app password for outbound mail — set with:
+//   firebase functions:secrets:set SMTP_PASSWORD
+const SMTP_PASSWORD = defineSecret('SMTP_PASSWORD');
+const SMTP_USER = 'stevenabi6912@gmail.com';
 
 const GRADING_MODEL = 'claude-sonnet-5';
 
@@ -297,16 +302,15 @@ async function buildNightlyReport() {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // Queue for the firestore-send-email extension (harmless until installed).
-  await db.collection('mail').add({
+  // Our own outbound queue (see sendOutbox below).
+  await db.collection('outbox').add({
     to: REPORT_EMAIL,
-    message: {
-      subject: `School report ${today} — ${STUDENT_ORDER.map((id) => {
-        const s = perStudent[id];
-        return `${s.name} ${s.completedToday.length}✓${s.missing.length ? ` ${s.missing.length}!` : ''}`;
-      }).join(', ')}`,
-      text,
-    },
+    subject: `School report ${today} — ${STUDENT_ORDER.map((id) => {
+      const s = perStudent[id];
+      return `${s.name} ${s.completedToday.length}✓${s.missing.length ? ` ${s.missing.length}!` : ''}`;
+    }).join(', ')}`,
+    text,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   return today;
 }
@@ -315,6 +319,36 @@ export const nightlyReport = onSchedule(
   { schedule: '30 17 * * 1-4', timeZone: 'America/Detroit' },
   async () => {
     await buildNightlyReport();
+  }
+);
+
+// Our own mail sender — no extension needed. Writes delivery state back so
+// failures are visible in the outbox collection.
+export const sendOutbox = onDocumentCreated(
+  { document: 'outbox/{mailId}', secrets: [SMTP_PASSWORD] },
+  async (event) => {
+    const data = event.data.data();
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: SMTP_USER, pass: SMTP_PASSWORD.value() },
+    });
+    try {
+      await transporter.sendMail({
+        from: `Wireman Family School <${SMTP_USER}>`,
+        to: data.to,
+        subject: data.subject,
+        text: data.text,
+        attachments: data.attachmentUrl
+          ? [{ filename: data.attachmentName ?? 'attachment.pdf', path: data.attachmentUrl }]
+          : undefined,
+      });
+      await event.data.ref.update({ state: 'sent', sentAt: admin.firestore.FieldValue.serverTimestamp() });
+    } catch (err) {
+      console.error('sendOutbox failed:', err);
+      await event.data.ref.update({ state: 'error', error: String(err).slice(0, 300) });
+    }
   }
 );
 
