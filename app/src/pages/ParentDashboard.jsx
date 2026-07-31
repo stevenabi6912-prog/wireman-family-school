@@ -11,6 +11,8 @@ import {
 } from '../lib/parentData';
 import { todayISO } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
+import { projectYear } from '../lib/reflow';
+import DaysOff from '../components/DaysOff';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -26,16 +28,22 @@ export default function ParentDashboard() {
   const { logout } = useAuth();
   const [students, setStudents] = useState(null);
   const [assignments, setAssignments] = useState(null);
+  const [year, setYear] = useState(null); // { family, projectedEnd, targetEnd }
   const today = todayISO();
 
   useEffect(() => {
     const unsubA = watchAssignmentsThroughToday(setAssignments);
     const unsubS = watchStudents(setStudents);
+    projectYear().then(setYear).catch(() => {});
     return () => {
       unsubA();
       unsubS();
     };
   }, []);
+
+  function refreshYear() {
+    projectYear().then(setYear).catch(() => {});
+  }
 
   const byStudent = useMemo(() => {
     const map = {};
@@ -73,7 +81,15 @@ export default function ParentDashboard() {
             {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
-        <button className="dash-logout" onClick={logout}>Switch person</button>
+        <div className="dash-header-right">
+          {year?.projectedEnd && (
+            <span className={`year-chip ${year.projectedEnd > year.targetEnd ? 'year-chip-behind' : ''}`}>
+              Last day: <strong>{year.projectedEnd}</strong>
+              {year.projectedEnd > year.targetEnd ? ' (past June 3 goal)' : ' ✓ on track'}
+            </span>
+          )}
+          <button className="dash-logout" onClick={logout}>Switch person</button>
+        </div>
       </header>
 
       <section className="student-grid">
@@ -150,6 +166,8 @@ export default function ParentDashboard() {
           </ul>
         )}
       </section>
+
+      {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
     </div>
   );
 }

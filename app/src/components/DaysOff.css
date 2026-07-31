@@ -1,0 +1,107 @@
+.daysoff-section {
+  margin-top: 2rem;
+}
+
+.daysoff-section h2 {
+  font-size: 1.25rem;
+  color: #2a2a2a;
+  margin-bottom: 0.25rem;
+}
+
+.daysoff-hint {
+  color: #777;
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+.daysoff-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: white;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.daysoff-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #666;
+}
+
+.daysoff-form input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.daysoff-label-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.daysoff-add {
+  background: #5b4b8a;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.daysoff-add:disabled {
+  opacity: 0.5;
+}
+
+.daysoff-result {
+  background: #eef7f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  color: #2c5c3c;
+  font-size: 0.92rem;
+}
+
+.daysoff-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.daysoff-list li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+}
+
+.daysoff-range {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.daysoff-name {
+  flex: 1;
+  color: #666;
+}
+
+.daysoff-remove {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #b3402f;
+}

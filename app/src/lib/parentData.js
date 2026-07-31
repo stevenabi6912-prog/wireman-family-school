@@ -6,6 +6,7 @@ import {
   onSnapshot,
   updateDoc,
   serverTimestamp,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { todayISO } from './assignments';
@@ -44,6 +45,9 @@ export async function rescheduleAssignment(assignmentId, dateISO) {
   await updateDoc(doc(db, 'assignments', assignmentId), {
     scheduledDate: dateISO,
     status: 'not_started',
+    // Hand-moved items leave the year-plan grid, so a later vacation
+    // reflow won't snap them back to their old slot.
+    dayIndex: deleteField(),
     updatedAt: serverTimestamp(),
   });
 }
