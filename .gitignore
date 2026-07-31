@@ -11,6 +11,7 @@
 .env
 .env.*
 !.env.example
+scripts/.pins.env
 *.local
 functions/.env
 functions/.runtimeconfig.json
