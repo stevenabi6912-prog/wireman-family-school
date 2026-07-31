@@ -10,6 +10,7 @@
 # Env / secrets
 .env
 .env.*
+!.env.example
 *.local
 functions/.env
 functions/.runtimeconfig.json
