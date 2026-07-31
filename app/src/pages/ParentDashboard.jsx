@@ -13,9 +13,10 @@ import { Link } from 'react-router-dom';
 import { todayISO } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { projectYear } from '../lib/reflow';
-import { watchAllGrades, gradePct, overrideGrade, approveGrade } from '../lib/grades';
+import { watchAllGrades } from '../lib/grades';
 import { computeStruggleFlags } from '../lib/struggles';
 import DaysOff from '../components/DaysOff';
+import ReviewCard from '../components/ReviewCard';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -202,13 +203,13 @@ export default function ParentDashboard() {
       </section>
 
       <section className="review-section">
-        <h2>Grades waiting on you {reviewQueue.length > 0 && <span className="review-count">{reviewQueue.length}</span>}</h2>
+        <h2>Needs your eyes {reviewQueue.length > 0 && <span className="review-count">{reviewQueue.length}</span>}</h2>
         {reviewQueue.length === 0 ? (
-          <p className="struggle-empty">Review queue is empty. ✅</p>
+          <p className="struggle-empty">Nothing waiting on you. ✅</p>
         ) : (
           <ul className="review-list">
             {reviewQueue.map((g) => (
-              <ReviewRow key={g.id} grade={g} studentName={students[g.studentId]?.name ?? g.studentId} />
+              <ReviewCard key={g.id} grade={g} studentName={students[g.studentId]?.name ?? g.studentId} />
             ))}
           </ul>
         )}
@@ -223,33 +224,3 @@ export default function ParentDashboard() {
   );
 }
 
-function ReviewRow({ grade, studentName }) {
-  const [value, setValue] = useState('');
-  const pct = gradePct(grade);
-  return (
-    <li className="review-row">
-      <div className="review-row-main">
-        <strong>{studentName}</strong> — {grade.subjectId} — {grade.assignmentId}
-        <span className="review-score">{pct == null ? 'no score' : `${grade.score}/${grade.maxScore}`}</span>
-        <p className="review-reason">{grade.reviewReason ?? 'Flagged for review'}</p>
-        {grade.misunderstandingSummary && <p className="review-note">“{grade.misunderstandingSummary}”</p>}
-      </div>
-      <div className="review-actions">
-        <input
-          type="number"
-          placeholder="New score"
-          min="0"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <button
-          onClick={() => value !== '' && overrideGrade(grade.id, Number(value))}
-          disabled={value === ''}
-        >
-          Set score
-        </button>
-        <button onClick={() => approveGrade(grade.id)}>Looks right</button>
-      </div>
-    </li>
-  );
-}

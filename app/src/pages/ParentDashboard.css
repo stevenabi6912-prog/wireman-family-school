@@ -343,3 +343,44 @@
   text-decoration: none;
   font-weight: 700;
 }
+
+.review-see-work {
+  margin-top: 0.5rem;
+  border: 1px solid #cfd8e3;
+  background: #f3f7fb;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review-work {
+  margin-top: 0.6rem;
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.review-answers {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.92rem;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.6rem;
+  margin: 0 0 0.5rem;
+}
+
+.review-photo {
+  max-width: 160px;
+  border-radius: 8px;
+  margin: 0.25rem;
+  border: 1px solid #ddd;
+}
+
+.review-pages-link {
+  font-size: 0.88rem;
+  color: #3b6ea8;
+}
