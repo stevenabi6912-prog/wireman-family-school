@@ -68,7 +68,11 @@ service cloud.firestore {
     // ---- submissions: a kid can create/update only their own drafts/submissions.
     //      Grading fields never live here (see /grades), so there's nothing gradable to fake. ----
     match /submissions/{submissionId} {
-      allow read: if isParent() || isStudent(resource.data.studentId);
+      // resource == null: the doc doesn't exist yet (first load of a fresh
+      // assignment) — a signed-in family member just gets "not found", which
+      // leaks nothing. Existing docs still require ownership.
+      allow read: if isParent() ||
+        (resource == null ? isSignedIn() : isStudent(resource.data.studentId));
 
       allow create: if isStudent(request.resource.data.studentId);
 

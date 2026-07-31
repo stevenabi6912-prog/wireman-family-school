@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { STUDENTS, PARENT } from '../config/students';
 import './Login.css';
@@ -12,8 +12,13 @@ export default function Login() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { loginWithPin } = useAuth();
+  const { user, role, loading, loginWithPin } = useAuth();
   const navigate = useNavigate();
+
+  // Already signed in (session persisted) — skip the login screen entirely.
+  if (!loading && user && role) {
+    return <Navigate to={role === 'parent' ? '/dashboard' : '/today'} replace />;
+  }
 
   function selectCard(person, isParent) {
     setSelected({ ...person, isParent });

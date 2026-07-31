@@ -189,6 +189,12 @@ describe('grades', () => {
 });
 
 describe('submissions', () => {
+  it('a student can probe for a not-yet-existing submission without a permission error', async () => {
+    // First load of a fresh assignment does a getDoc before any draft exists;
+    // that must return "not found", not PERMISSION_DENIED (which would break autosave arming).
+    await assertSucceeds(getDoc(doc(asLuke(), 'submissions/luke-brand-new')));
+  });
+
   it('a student can create their own submission', async () => {
     await assertSucceeds(
       setDoc(doc(asLuke(), 'submissions/luke-1'), {
