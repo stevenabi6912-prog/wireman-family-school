@@ -18,6 +18,7 @@ import { computeStruggleFlags } from '../lib/struggles';
 import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
 import MemoryWork from '../components/MemoryWork';
+import SchoolCalendar from '../components/SchoolCalendar';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -37,6 +38,7 @@ export default function ParentDashboard() {
   const today = todayISO();
 
   const [grades, setGrades] = useState([]);
+  const [calOpen, setCalOpen] = useState(false);
 
   useEffect(() => {
     const unsubA = watchAssignmentsThroughToday(setAssignments);
@@ -100,6 +102,7 @@ export default function ParentDashboard() {
           </p>
         </div>
         <div className="dash-header-right">
+          <button className="dash-logout" onClick={() => setCalOpen(true)}>📅 Calendar</button>
           {year?.projectedEnd && (
             <span className={`year-chip ${year.projectedEnd > year.targetEnd ? 'year-chip-behind' : ''}`}>
               Last day: <strong>{year.projectedEnd}</strong>
@@ -219,6 +222,8 @@ export default function ParentDashboard() {
       <MemoryWork students={students} order={STUDENT_ORDER} />
 
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
+
+      {calOpen && <SchoolCalendar onClose={() => setCalOpen(false)} />}
 
       <p className="records-link-row">
         <Link to="/records" className="records-link">📄 Gradebook & printable records</Link>

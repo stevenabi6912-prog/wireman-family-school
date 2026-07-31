@@ -1,0 +1,130 @@
+.cal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 40, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+  padding: 1rem;
+}
+
+.cal-sheet {
+  background: white;
+  border-radius: 20px;
+  padding: 1.1rem 1.25rem;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cal-header h2 {
+  flex: 1;
+  text-align: center;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.cal-nav {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.cal-close {
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #888;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 0.6rem;
+}
+
+.cal-dow span {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #999;
+}
+
+.cal-day {
+  min-height: 46px;
+  border-radius: 10px;
+  background: #f4f4f2;
+  padding: 3px 4px;
+  position: relative;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.cal-school {
+  background: #dff0e3;
+  color: #205c36;
+  font-weight: 700;
+}
+
+.cal-off {
+  background: #fdeecd;
+  color: #8a6116;
+}
+
+.cal-today {
+  outline: 3px solid #5b4b8a;
+}
+
+.cal-num {
+  font-size: 0.8rem;
+}
+
+.cal-flag {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 0.85rem;
+}
+
+.cal-offlabel {
+  display: block;
+  font-size: 0.55rem;
+  line-height: 1.15;
+  overflow: hidden;
+  font-weight: 700;
+}
+
+.cal-legend {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.cal-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  vertical-align: -1px;
+  margin-right: 3px;
+}
+
+.cal-dot-school { background: #dff0e3; border: 1px solid #9cc7a8; }
+.cal-dot-off { background: #fdeecd; border: 1px solid #dbb96a; }

@@ -10,6 +10,7 @@ import ThemePicker from '../components/ThemePicker';
 import Confetti from '../components/Confetti';
 import BreakRoom from '../components/BreakRoom';
 import YearTrail from '../components/YearTrail';
+import SchoolCalendar from '../components/SchoolCalendar';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
 import './StudentChecklist.css';
 
@@ -41,6 +42,7 @@ export default function StudentChecklist() {
   const [upcoming, setUpcoming] = useState([]); // future-dated items for the bonus round
   const [overdueRaw, setOverdueRaw] = useState([]); // unfinished from earlier days
   const [breakOpen, setBreakOpen] = useState(false);
+  const [calOpen, setCalOpen] = useState(false);
   const [breakReady, setBreakReady] = useState(false);
   const [minsToBreak, setMinsToBreak] = useState(30);
   const prevDone = useRef(null);
@@ -237,6 +239,7 @@ export default function StudentChecklist() {
           )}
           <button className="mine-btn" onClick={() => setPickerOpen(true)}>✨ {large ? 'My look' : 'Make it mine'}</button>
           <div className="hero-small-actions">
+            <button className="mute-btn" onClick={() => setCalOpen(true)} title="School calendar">📅</button>
             <button className="mute-btn" onClick={toggleMute} title={muted ? 'Turn sounds on' : 'Turn sounds off'}>
               {muted ? '🔇' : '🔊'}
             </button>
@@ -313,6 +316,8 @@ export default function StudentChecklist() {
       {breakOpen && (
         <BreakRoom studentId={studentId} large={large} onClose={() => setBreakOpen(false)} />
       )}
+
+      {calOpen && <SchoolCalendar onClose={() => setCalOpen(false)} />}
 
       {pickerOpen && (
         <ThemePicker
