@@ -71,7 +71,7 @@ export default function Login() {
               style={{ '--card-color': s.color }}
               onClick={() => selectCard(s, false)}
             >
-              <span className="name-card-avatar">{s.initial}</span>
+              <span className="name-card-avatar">{s.emoji}</span>
               <span className="name-card-name">{s.name}</span>
             </button>
           ))}
@@ -82,7 +82,7 @@ export default function Login() {
           style={{ '--card-color': PARENT.color }}
           onClick={() => selectCard(PARENT, true)}
         >
-          <span className="name-card-avatar">{PARENT.initial}</span>
+          <span className="name-card-avatar">{PARENT.emoji}</span>
           <span className="name-card-name">{PARENT.name} (Parent)</span>
         </button>
       </div>
