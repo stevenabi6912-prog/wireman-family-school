@@ -35,7 +35,7 @@ export default function AssignmentCard({ assignment, studentId, state, large }) 
   return (
     <div className={`assignment-card assignment-${state} ${large ? 'assignment-large' : ''}`}>
       <div className="assignment-header">
-        <span className="assignment-type">{TYPE_LABELS[assignment.itemType] ?? assignment.itemType}</span>
+        <span className="assignment-type">{assignment.catchUp && state !== 'done' ? '⏰ ' : ''}{TYPE_LABELS[assignment.itemType] ?? assignment.itemType}</span>
         <span className="assignment-title">{assignment.title}</span>
         <span className="assignment-time">
           {state === 'done' ? '✅' : state === 'locked' ? '🔒' : `~${assignment.estimatedMinutes} min`}

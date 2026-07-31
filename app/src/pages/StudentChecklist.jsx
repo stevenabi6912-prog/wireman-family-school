@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { watchDayAssignments, watchUpcomingAssignments, todayISO, resolveContentUrl } from '../lib/assignments';
+import { watchDayAssignments, watchUpcomingAssignments, watchOverdueAssignments, todayISO, resolveContentUrl } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { playDing, playFanfare, isMuted, setMuted } from '../lib/sounds';
 import AssignmentCard from '../components/AssignmentCard';
@@ -36,6 +36,7 @@ export default function StudentChecklist() {
   const [muted, setMutedState] = useState(isMuted());
   const [headerImageUrl, setHeaderImageUrl] = useState(null);
   const [upcoming, setUpcoming] = useState([]); // future-dated items for the bonus round
+  const [overdueRaw, setOverdueRaw] = useState([]); // unfinished from earlier days
   const prevDone = useRef(null);
   const prevBonusDone = useRef(null);
   const date = todayISO();
@@ -47,10 +48,12 @@ export default function StudentChecklist() {
     });
     const unsubDay = watchDayAssignments(studentId, date, setAssignments);
     const unsubUpcoming = watchUpcomingAssignments(studentId, date, setUpcoming);
+    const unsubOverdue = watchOverdueAssignments(studentId, date, setOverdueRaw);
     return () => {
       unsubStudent();
       unsubDay();
       unsubUpcoming();
+      unsubOverdue();
     };
   }, [studentId, date]);
 
@@ -70,18 +73,33 @@ export default function StudentChecklist() {
     };
   }, [student?.theme?.headerImagePath]);
 
+  // Catch-up first: unfinished items from earlier days go to the FRONT of
+  // today's list (plus any caught-up today, so progress doesn't jump around).
+  const combined = useMemo(() => {
+    if (!assignments) return null;
+    const isToday = (t) => {
+      const w = t?.toDate?.();
+      return w && todayISO() === `${w.getFullYear()}-${String(w.getMonth() + 1).padStart(2, '0')}-${String(w.getDate()).padStart(2, '0')}`;
+    };
+    const catchUp = overdueRaw
+      .filter((a) => !DONE_STATUSES.has(a.status) || isToday(a.updatedAt))
+      .map((a) => ({ ...a, catchUp: true }));
+    return [...catchUp, ...assignments];
+  }, [assignments, overdueRaw]);
+
   const { doneCount, activeIndex } = useMemo(() => {
-    if (!assignments) return { doneCount: 0, activeIndex: -1 };
+    if (!combined) return { doneCount: 0, activeIndex: -1 };
     let done = 0;
     let active = -1;
-    for (let i = 0; i < assignments.length; i++) {
-      if (DONE_STATUSES.has(assignments[i].status)) done++;
+    for (let i = 0; i < combined.length; i++) {
+      if (DONE_STATUSES.has(combined[i].status)) done++;
       else if (active === -1) active = i;
     }
     return { doneCount: done, activeIndex: active };
-  }, [assignments]);
+  }, [combined]);
+  const catchUpLeft = combined?.filter((a) => a.catchUp && !DONE_STATUSES.has(a.status)).length ?? 0;
 
-  const total = assignments?.length ?? 0;
+  const total = combined?.length ?? 0;
   const allDone = total > 0 && activeIndex === -1;
 
   // ---- bonus round: work ahead, max ONE extra item per subject per day ----
@@ -154,7 +172,7 @@ export default function StudentChecklist() {
   const cheer = cheerLine(doneCount, total, large);
   const pct = total ? (doneCount / total) * 100 : 0;
 
-  if (!assignments) {
+  if (!combined) {
     return <div className="loading-screen">Getting your list ready…</div>;
   }
 
@@ -218,6 +236,11 @@ export default function StudentChecklist() {
                 {doneCount} of {total} done
               </span>
             </div>
+            {catchUpLeft > 0 && (
+              <p className="catchup-banner">
+                ⏰ {large ? `Finish ${catchUpLeft} from before first!` : `First: ${catchUpLeft} item${catchUpLeft > 1 ? 's' : ''} to catch up from earlier days — then today's list.`}
+              </p>
+            )}
             {cheer && <p className="cheer-line">{cheer}</p>}
           </div>
 
@@ -236,7 +259,7 @@ export default function StudentChecklist() {
             </div>
           ) : (
             <div className="assignment-list">
-              {assignments.map((a, i) => (
+              {combined.map((a, i) => (
                 <AssignmentCard
                   key={a.id}
                   assignment={a}

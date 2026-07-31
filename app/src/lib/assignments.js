@@ -37,6 +37,21 @@ export function watchDayAssignments(studentId, dateISO, callback) {
   });
 }
 
+// Unfinished work from earlier days — the kid must catch these up before
+// today's list unlocks.
+export function watchOverdueAssignments(studentId, beforeDateISO, callback) {
+  const q = query(
+    collection(db, 'assignments'),
+    where('studentId', '==', studentId),
+    where('scheduledDate', '<', beforeDateISO),
+    orderBy('scheduledDate', 'asc'),
+    limit(30)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
 // Upcoming (future-dated) assignments for the work-ahead "bonus round" —
 // the next few school days, ordered soonest-first.
 export function watchUpcomingAssignments(studentId, afterDateISO, callback) {
