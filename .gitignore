@@ -1,0 +1,31 @@
+# Curriculum PDFs are copyrighted third-party content (Hillsdale, Core Knowledge,
+# Singapore Math, Answers in Genesis, etc.) and must never be committed to this
+# repo, which is public on GitHub Pages. All curriculum lives in Firebase Storage,
+# gated by security rules. See CONTRIBUTING.md.
+*.pdf
+*.PDF
+/Hillsdale/
+/content-inventory.md
+
+# Env / secrets
+.env
+.env.*
+*.local
+functions/.env
+functions/.runtimeconfig.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Firebase emulator data
+firebase-export-*/
+
+# OS
+.DS_Store

@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Role and studentId live as Firebase Auth custom claims (set once via an
+    // admin script when each account is provisioned — see scripts/seed-users.js),
+    // not read from a Firestore document. That means a compromised or miswritten
+    // Firestore doc can never grant elevated access on its own.
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isParent() {
+      return isSignedIn() && request.auth.token.role == 'parent';
+    }
+
+    function isStudent(studentId) {
+      return isSignedIn() && request.auth.token.role == 'student'
+        && request.auth.token.studentId == studentId;
+    }
+
+    // ---- users: profile mirror of the auth claims, for display/lookup only ----
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isParent());
+      allow write: if isParent();
+    }
+
+    // ---- families: single family-config doc (school days, calendar, blockouts) ----
+    match /families/{familyId} {
+      allow read: if isSignedIn();
+      allow write: if isParent();
+    }
+
+    // ---- subjects: shared read-only reference data ----
+    match /subjects/{subjectId} {
+      allow read: if isSignedIn();
+      allow write: if isParent();
+    }
+
+    // ---- students: a kid can read only their own student doc; nothing else ----
+    match /students/{studentId} {
+      allow read: if isParent() || isStudent(studentId);
+      allow write: if isParent();
+    }
+
+    // ---- assignments: a kid can read/update status on only their own assignments.
+    //      Kids can never touch scheduledDate/keyPath/grading-relevant fields directly —
+    //      the app only ever calls a narrow status transition, enforced here. ----
+    match /assignments/{assignmentId} {
+      allow read: if isParent() || isStudent(resource.data.studentId);
+
+      allow create, delete: if isParent();
+
+      allow update: if isParent() || (
+        isStudent(resource.data.studentId) &&
+        // students may only flip status between not_started/in_progress/submitted
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt']) &&
+        request.resource.data.status in ['not_started', 'in_progress', 'submitted'] &&
+        // never allowed to touch keyPath or scheduledDate regardless
+        request.resource.data.keyPath == resource.data.keyPath &&
+        request.resource.data.scheduledDate == resource.data.scheduledDate
+      );
+    }
+
+    // ---- submissions: a kid can create/update only their own drafts/submissions.
+    //      Grading fields never live here (see /grades), so there's nothing gradable to fake. ----
+    match /submissions/{submissionId} {
+      allow read: if isParent() || isStudent(resource.data.studentId);
+
+      allow create: if isStudent(request.resource.data.studentId);
+
+      allow update: if isParent() || (
+        isStudent(resource.data.studentId) &&
+        // a student can keep editing their own submission only while it's still a draft
+        resource.data.isDraft == true
+      );
+
+      allow delete: if isParent();
+    }
+
+    // ---- grades: students can READ their own grade, never write. Only the grading
+    //      Cloud Function (admin SDK, bypasses rules) or Abi can write grades. ----
+    match /grades/{gradeId} {
+      allow read: if isParent() || isStudent(resource.data.studentId);
+      allow write: if isParent();
+    }
+  }
+}

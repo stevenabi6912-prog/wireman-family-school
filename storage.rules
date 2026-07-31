@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Same custom-claims approach as firestore.rules — role/studentId come from
+    // the Auth token, never from a cross-service Firestore lookup.
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isParent() {
+      return isSignedIn() && request.auth.token.role == 'parent';
+    }
+
+    function isOwnStudent(studentId) {
+      return isSignedIn() && request.auth.token.role == 'student'
+        && request.auth.token.studentId == studentId;
+    }
+
+    // Curriculum PDFs: any signed-in family member (student or parent) can read.
+    // Only the parent (via console/admin tooling) writes — students never upload curriculum.
+    match /curriculum/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isParent();
+    }
+
+    // Answer keys: parent only. Students are explicitly denied, full stop —
+    // there is no path here that ever matches a student's own uid.
+    match /keys/{allPaths=**} {
+      allow read, write: if isParent();
+    }
+
+    // Submissions (photo/file uploads of paper work): a student can read/write only
+    // their own folder; parent can read/write all of them.
+    match /submissions/{studentId}/{allPaths=**} {
+      allow read: if isParent() || isOwnStudent(studentId);
+      allow write: if isParent() || isOwnStudent(studentId);
+    }
+  }
+}
