@@ -462,3 +462,15 @@
   border-radius: 10px;
   padding: 0.5rem 0.9rem;
 }
+
+.break-btn {
+  background: #ffd75e;
+  color: #4a3b00;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  animation: pulse 1.6s infinite;
+}

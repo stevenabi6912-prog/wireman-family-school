@@ -1,0 +1,258 @@
+.break-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 40, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1rem;
+}
+
+.break-sheet {
+  background: white;
+  border-radius: 22px;
+  padding: 1.25rem 1.4rem;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.break-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.break-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.break-timer {
+  font-size: 1.5rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  background: #e8f2ea;
+  color: #2c7a48;
+  border-radius: 999px;
+  padding: 0.25rem 0.9rem;
+}
+
+.break-timer-low {
+  background: #fdeade;
+  color: #b3402f;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  50% { transform: scale(1.08); }
+}
+
+.break-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.break-picker button {
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 1.4rem 0.5rem;
+  border: 3px solid #eee;
+  border-radius: 16px;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.break-picker button:active {
+  transform: scale(0.96);
+}
+
+.break-back {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  margin: 0.5rem 0;
+}
+
+.break-over {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  padding: 2rem 0;
+}
+
+.break-done {
+  width: 100%;
+  margin-top: 0.75rem;
+  background: #4c9a6a;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.game-box {
+  text-align: center;
+}
+
+.game-hint {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.game-win {
+  font-weight: 800;
+  color: #2c7a48;
+}
+
+.game-win button, .game-hint button {
+  margin-left: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  background: white;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+}
+
+/* sudoku */
+.sudoku-grid {
+  display: grid;
+  gap: 2px;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.sudoku-cell {
+  aspect-ratio: 1;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+}
+
+.sudoku-given {
+  background: #eef2f7;
+  color: #555;
+  cursor: default;
+}
+
+.sudoku-boxr { border-right: 3px solid #555; }
+.sudoku-boxb { border-bottom: 3px solid #555; }
+
+/* word search */
+.ws-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.ws-cell {
+  aspect-ratio: 1;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid #e5e5e5;
+  background: white;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ws-sel { background: #ffe9a8; }
+.ws-found { background: #cdeccd; }
+
+.ws-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.ws-words span {
+  background: #f0f0f0;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ws-word-done {
+  background: #cdeccd !important;
+  text-decoration: line-through;
+}
+
+/* word builder */
+.builder-letters {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 0.5rem 0;
+}
+
+.builder-letters span {
+  background: #3b6ea8;
+  color: white;
+  font-weight: 900;
+  font-size: 1.4rem;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+
+.builder-entry {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.builder-entry input {
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  padding: 0.6rem;
+  font-size: 1.1rem;
+  width: 180px;
+  text-transform: uppercase;
+}
+
+.builder-entry button {
+  background: #4c9a6a;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.builder-flash-yes { color: #2c7a48; font-weight: 800; }
+.builder-flash-no { color: #b3402f; font-weight: 700; }
+
+/* trivia */
+.trivia-q {
+  font-size: 1.15rem;
+}
+
+.trivia-answers {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.trivia-answers button {
+  padding: 0.8rem;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  background: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trivia-right { background: #cdeccd !important; border-color: #2c7a48 !important; }
+.trivia-wrong { background: #f8d3cc !important; border-color: #b3402f !important; }
