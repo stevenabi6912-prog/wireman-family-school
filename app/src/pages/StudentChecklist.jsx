@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { watchDayAssignments, todayISO, resolveContentUrl } from '../lib/assignments';
+import { watchDayAssignments, watchUpcomingAssignments, todayISO, resolveContentUrl } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { playDing, playFanfare, isMuted, setMuted } from '../lib/sounds';
 import AssignmentCard from '../components/AssignmentCard';
@@ -35,7 +35,9 @@ export default function StudentChecklist() {
   const [burst, setBurst] = useState(null); // 'small' | 'big' | null
   const [muted, setMutedState] = useState(isMuted());
   const [headerImageUrl, setHeaderImageUrl] = useState(null);
+  const [upcoming, setUpcoming] = useState([]); // future-dated items for the bonus round
   const prevDone = useRef(null);
+  const prevBonusDone = useRef(null);
   const date = todayISO();
 
   useEffect(() => {
@@ -44,9 +46,11 @@ export default function StudentChecklist() {
       if (snap.exists()) setStudent(snap.data());
     });
     const unsubDay = watchDayAssignments(studentId, date, setAssignments);
+    const unsubUpcoming = watchUpcomingAssignments(studentId, date, setUpcoming);
     return () => {
       unsubStudent();
       unsubDay();
+      unsubUpcoming();
     };
   }, [studentId, date]);
 
@@ -79,6 +83,44 @@ export default function StudentChecklist() {
 
   const total = assignments?.length ?? 0;
   const allDone = total > 0 && activeIndex === -1;
+
+  // ---- bonus round: work ahead, max ONE extra item per subject per day ----
+  // "Done ahead today" = future-dated items completed today (updatedAt today).
+  const { bonusCandidates, bonusDoneToday } = useMemo(() => {
+    const doneAheadBySubject = {};
+    for (const a of upcoming) {
+      if (!DONE_STATUSES.has(a.status)) continue;
+      const when = a.updatedAt?.toDate?.();
+      if (when && todayISO() === `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')}`) {
+        doneAheadBySubject[a.subjectId] = a;
+      }
+    }
+    // next not-done item per subject (upcoming is ordered soonest-first);
+    // subjects already worked ahead today are excluded.
+    const nextBySubject = {};
+    for (const a of upcoming) {
+      if (DONE_STATUSES.has(a.status)) continue;
+      if (doneAheadBySubject[a.subjectId]) continue;
+      if (!nextBySubject[a.subjectId]) nextBySubject[a.subjectId] = a;
+    }
+    return {
+      bonusCandidates: Object.values(nextBySubject).sort((x, y) => x.sequence - y.sequence),
+      bonusDoneToday: Object.values(doneAheadBySubject),
+    };
+  }, [upcoming]);
+
+  // celebrate bonus completions too
+  useEffect(() => {
+    if (prevBonusDone.current === null) {
+      prevBonusDone.current = bonusDoneToday.length;
+      return;
+    }
+    if (bonusDoneToday.length > prevBonusDone.current) {
+      playDing();
+      setBurst('small');
+    }
+    prevBonusDone.current = bonusDoneToday.length;
+  }, [bonusDoneToday.length]);
 
   // Celebrate transitions: ding+confetti per item, fanfare+big confetti for the day
   useEffect(() => {
@@ -157,6 +199,12 @@ export default function StudentChecklist() {
         <div className="empty-day">
           <div className="empty-day-emoji">{theme.avatar}</div>
           <h2>{emptyLine}</h2>
+          <BonusRound
+            candidates={bonusCandidates}
+            doneToday={bonusDoneToday}
+            studentId={studentId}
+            large={large}
+          />
         </div>
       ) : (
         <>
@@ -179,6 +227,12 @@ export default function StudentChecklist() {
               <div className="day-complete-burst">🌟🎉🌟</div>
               <h2>{large ? 'ALL DONE! You rock!' : `That's everything — great work today, ${firstName}!`}</h2>
               <p>School's out. Go tell Mom!</p>
+              <BonusRound
+                candidates={bonusCandidates}
+                doneToday={bonusDoneToday}
+                studentId={studentId}
+                large={large}
+              />
             </div>
           ) : (
             <div className="assignment-list">
@@ -204,6 +258,46 @@ export default function StudentChecklist() {
           current={{ palette: theme.palette, avatar: theme.avatar, headerImagePath: student?.theme?.headerImagePath ?? null }}
           onClose={() => setPickerOpen(false)}
         />
+      )}
+    </div>
+  );
+}
+
+// Work ahead after the day is done: the NEXT item from each subject, one
+// extra per subject per day. Worked-ahead items keep their future date, so
+// that day starts already partly finished.
+function BonusRound({ candidates, doneToday, studentId, large }) {
+  const [open, setOpen] = useState(false);
+
+  if (candidates.length === 0 && doneToday.length === 0) return null;
+
+  return (
+    <div className="bonus-round">
+      {doneToday.length > 0 && (
+        <p className="bonus-banked">
+          🏦 {doneToday.length} bonus item{doneToday.length > 1 ? 's' : ''} banked for later days!
+        </p>
+      )}
+      {candidates.length > 0 && !open && (
+        <button className="bonus-open-btn" onClick={() => setOpen(true)}>
+          {large ? '⚡ Do more!' : '⚡ Feeling unstoppable? Get a head start'}
+        </button>
+      )}
+      {open && candidates.length > 0 && (
+        <div className="bonus-list">
+          <p className="bonus-hint">
+            {large ? 'Pick one from each — tomorrow gets easier!' : 'One bonus item per subject — anything you finish is already done when its day comes.'}
+          </p>
+          {candidates.map((a) => (
+            <AssignmentCard
+              key={a.id}
+              assignment={a}
+              studentId={studentId}
+              large={large}
+              state="active"
+            />
+          ))}
+        </div>
       )}
     </div>
   );

@@ -405,3 +405,50 @@
 .checklist-large .hero-avatar {
   font-size: 3.2rem;
 }
+
+/* bonus round (work ahead) */
+.bonus-round {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.bonus-banked {
+  font-weight: 800;
+  color: var(--t-text, #2a2a2a);
+}
+
+.bonus-open-btn {
+  background: white;
+  color: #333;
+  border: 3px dashed var(--t-accent, #4c9a6a);
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.bonus-open-btn:active {
+  transform: scale(0.97);
+}
+
+.bonus-list {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.bonus-hint {
+  color: var(--t-text, #555);
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 0;
+}
+
+.checklist-large .bonus-open-btn {
+  font-size: 1.35rem;
+  padding: 1.2rem 1.8rem;
+}

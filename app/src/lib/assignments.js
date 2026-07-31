@@ -8,6 +8,8 @@ import {
   setDoc,
   getDoc,
   serverTimestamp,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { ref, getDownloadURL, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -32,6 +34,21 @@ export function watchDayAssignments(studentId, dateISO, callback) {
       .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => a.sequence - b.sequence);
     callback(items);
+  });
+}
+
+// Upcoming (future-dated) assignments for the work-ahead "bonus round" —
+// the next few school days, ordered soonest-first.
+export function watchUpcomingAssignments(studentId, afterDateISO, callback) {
+  const q = query(
+    collection(db, 'assignments'),
+    where('studentId', '==', studentId),
+    where('scheduledDate', '>', afterDateISO),
+    orderBy('scheduledDate', 'asc'),
+    limit(40)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });
 }
 
