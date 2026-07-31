@@ -112,7 +112,7 @@ export default function StudentChecklist() {
 
   // ---- bonus round: work ahead, max ONE extra item per subject per day ----
   // "Done ahead today" = future-dated items completed today (updatedAt today).
-  const { bonusCandidates, bonusDoneToday } = useMemo(() => {
+  const { bonusCandidates, bonusDoneToday, bonusUncapped } = useMemo(() => {
     const doneAheadBySubject = {};
     for (const a of upcoming) {
       if (!DONE_STATUSES.has(a.status)) continue;
@@ -121,19 +121,31 @@ export default function StudentChecklist() {
         doneAheadBySubject[a.subjectId] = a;
       }
     }
-    // next not-done item per subject (upcoming is ordered soonest-first);
-    // subjects already worked ahead today are excluded.
-    const nextBySubject = {};
-    for (const a of upcoming) {
-      if (DONE_STATUSES.has(a.status)) continue;
-      if (doneAheadBySubject[a.subjectId]) continue;
-      if (!nextBySubject[a.subjectId]) nextBySubject[a.subjectId] = a;
+    // On SCHOOL days: one extra per subject (no six-history binges).
+    // On BREAK days (nothing scheduled today): uncapped — items come in
+    // plan order, so a day off can be spent doing "the next school day".
+    const isBreakDay = (assignments?.length ?? 0) === 0;
+    let candidates;
+    if (isBreakDay) {
+      candidates = upcoming
+        .filter((a) => !DONE_STATUSES.has(a.status))
+        .sort((x, y) => x.dayIndex - y.dayIndex || x.sequence - y.sequence)
+        .slice(0, 10);
+    } else {
+      const nextBySubject = {};
+      for (const a of upcoming) {
+        if (DONE_STATUSES.has(a.status)) continue;
+        if (doneAheadBySubject[a.subjectId]) continue;
+        if (!nextBySubject[a.subjectId]) nextBySubject[a.subjectId] = a;
+      }
+      candidates = Object.values(nextBySubject).sort((x, y) => x.sequence - y.sequence);
     }
     return {
-      bonusCandidates: Object.values(nextBySubject).sort((x, y) => x.sequence - y.sequence),
+      bonusCandidates: candidates,
       bonusDoneToday: Object.values(doneAheadBySubject),
+      bonusUncapped: isBreakDay,
     };
-  }, [upcoming]);
+  }, [upcoming, assignments]);
 
   // celebrate bonus completions too
   useEffect(() => {
@@ -257,6 +269,7 @@ export default function StudentChecklist() {
             doneToday={bonusDoneToday}
             studentId={studentId}
             large={large}
+            uncapped={bonusUncapped}
           />
         </div>
       ) : (
@@ -333,7 +346,7 @@ export default function StudentChecklist() {
 // Work ahead after the day is done: the NEXT item from each subject, one
 // extra per subject per day. Worked-ahead items keep their future date, so
 // that day starts already partly finished.
-function BonusRound({ candidates, doneToday, studentId, large }) {
+function BonusRound({ candidates, doneToday, studentId, large, uncapped }) {
   const [open, setOpen] = useState(false);
 
   if (candidates.length === 0 && doneToday.length === 0) return null;
@@ -353,7 +366,9 @@ function BonusRound({ candidates, doneToday, studentId, large }) {
       {open && candidates.length > 0 && (
         <div className="bonus-list">
           <p className="bonus-hint">
-            {large ? 'Pick one from each — tomorrow gets easier!' : 'One bonus item per subject — anything you finish is already done when its day comes.'}
+            {uncapped
+              ? (large ? 'Day off — do as much as you want!' : 'It\'s a day off — no limits today. Items come in order; everything you finish is banked.')
+              : (large ? 'Pick one from each — tomorrow gets easier!' : 'One bonus item per subject — anything you finish is already done when its day comes.')}
           </p>
           {candidates.map((a) => (
             <AssignmentCard
