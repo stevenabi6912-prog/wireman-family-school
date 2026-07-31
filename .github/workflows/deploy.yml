@@ -44,6 +44,10 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
         run: npm run build
 
+      # GitHub Pages SPA fallback: serve the app for deep links like /dashboard
+      - name: Add 404 fallback
+        run: cp app/dist/index.html app/dist/404.html
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/dist
