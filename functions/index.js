@@ -3,8 +3,28 @@ import { onDocumentUpdated, onDocumentCreated } from 'firebase-functions/v2/fire
 import { defineSecret } from 'firebase-functions/params';
 import admin from 'firebase-admin';
 import Anthropic from '@anthropic-ai/sdk';
+import { PDFDocument } from 'pdf-lib';
 
 admin.initializeApp();
+
+// The Claude API caps PDF documents at ~100 pages; curriculum teacher guides
+// run to 300+. keyPath/contentPath carry a "#page=N" anchor pointing at the
+// relevant answers, so slice a window of pages around the anchor instead of
+// sending the whole book.
+const KEY_PAGE_WINDOW = 10;
+
+async function sliceKeyPdf(buf, anchorPage) {
+  const src = await PDFDocument.load(buf, { ignoreEncryption: true });
+  const total = src.getPageCount();
+  if (total <= 95 && !anchorPage) return buf; // small enough to send whole
+
+  const start = Math.max(0, (anchorPage ? anchorPage - 1 : 0));
+  const end = Math.min(total, start + KEY_PAGE_WINDOW);
+  const out = await PDFDocument.create();
+  const pages = await out.copyPages(src, Array.from({ length: end - start }, (_, i) => start + i));
+  pages.forEach((p) => out.addPage(p));
+  return Buffer.from(await out.save());
+}
 
 // The Anthropic API key lives only here, as a Firebase secret — never in
 // frontend code. Set it with: firebase functions:secrets:set ANTHROPIC_API_KEY
@@ -20,6 +40,15 @@ async function fetchStorageBase64(path) {
   const clean = path.split('#')[0];
   const [buf] = await admin.storage().bucket().file(clean).download();
   return buf.toString('base64');
+}
+
+async function fetchKeyPdfBase64(keyPath) {
+  const [clean, anchor] = keyPath.split('#');
+  const [buf] = await admin.storage().bucket().file(clean).download();
+  const pageMatch = anchor?.match(/page=(\d+)/);
+  const anchorPage = pageMatch ? Number(pageMatch[1]) : null;
+  const sliced = await sliceKeyPdf(buf, anchorPage);
+  return sliced.toString('base64');
 }
 
 function mediaTypeFor(path) {
@@ -78,13 +107,20 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
 
   const msg = await client.messages.create({
     model: GRADING_MODEL,
-    max_tokens: 2000,
+    max_tokens: 8000,
     messages: [{ role: 'user', content }],
   });
 
-  const text = msg.content.find((b) => b.type === 'text')?.text ?? '';
+  const text = msg.content
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('\n');
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error(`No JSON in grading response: ${text.slice(0, 200)}`);
+  if (!jsonMatch) {
+    throw new Error(
+      `No JSON in grading response (stop_reason=${msg.stop_reason}, blocks=${msg.content.map((b) => b.type).join(',')}): ${text.slice(0, 200)}`
+    );
+  }
   return JSON.parse(jsonMatch[0]);
 }
 
@@ -125,7 +161,7 @@ async function runGrading(submissionId, submission) {
   }
 
   try {
-    const keyB64 = await fetchStorageBase64(assignment.keyPath);
+    const keyB64 = await fetchKeyPdfBase64(assignment.keyPath);
     const result = await gradeWithClaude({
       apiKey: ANTHROPIC_API_KEY.value(),
       assignment,
