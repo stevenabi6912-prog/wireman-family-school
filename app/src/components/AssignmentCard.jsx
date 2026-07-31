@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
-import { setAssignmentStatus } from '../lib/assignments';
+import { markStarted, completeAssignment } from '../lib/assignments';
 
 const TYPE_LABELS = {
   reading: '📖 Reading',
@@ -20,8 +21,15 @@ export default function AssignmentCard({ assignment, studentId, state, large }) 
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
 
+  // Start the clock the first time this item becomes the active one.
+  useEffect(() => {
+    if (isActive && !assignment.startedAt) {
+      markStarted(assignment.id).catch(() => {});
+    }
+  }, [isActive, assignment.id, assignment.startedAt]);
+
   async function markDone() {
-    await setAssignmentStatus(assignment.id, 'submitted');
+    await completeAssignment(assignment);
   }
 
   return (

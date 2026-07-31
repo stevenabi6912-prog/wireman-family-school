@@ -59,6 +59,26 @@ export async function setAssignmentStatus(assignmentId, status) {
   });
 }
 
+// Stamp when the kid first opens an item (only ever called when unset).
+export async function markStarted(assignmentId) {
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    startedAt: serverTimestamp(),
+    status: 'in_progress',
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// Complete an item, recording how long it actually took (wall-clock from
+// first open to done, capped at 8h so an overnight tab doesn't poison data).
+export async function completeAssignment(assignment) {
+  const patch = { status: 'submitted', updatedAt: serverTimestamp() };
+  const startedMs = assignment.startedAt?.toMillis?.();
+  if (startedMs) {
+    patch.actualMinutes = Math.min(480, Math.max(1, Math.round((Date.now() - startedMs) / 60000)));
+  }
+  await updateDoc(doc(db, 'assignments', assignment.id), patch);
+}
+
 // contentPath may carry a "#page=N" anchor for deep-linking into a PDF.
 export async function resolveContentUrl(contentPath) {
   if (!contentPath) return null;
@@ -105,7 +125,7 @@ export async function submitWork(assignment, studentId, payload) {
     },
     { merge: true }
   );
-  await setAssignmentStatus(assignment.id, 'submitted');
+  await completeAssignment(assignment);
 }
 
 export async function uploadSubmissionFile(studentId, dateISO, file) {

@@ -64,6 +64,24 @@ export function computeStruggleFlags({ grades, assignments }) {
     }
   }
 
+  // 2b. Items consistently taking much longer than estimated (real timing data)
+  const slow = {};
+  for (const a of assignments) {
+    if (!a.actualMinutes || !a.estimatedMinutes) continue;
+    if (a.actualMinutes >= a.estimatedMinutes * 1.5 && a.actualMinutes - a.estimatedMinutes >= 10) {
+      const key = `${a.studentId}|${a.subjectId}`;
+      (slow[key] = slow[key] ?? []).push(a);
+    }
+  }
+  for (const [key, list] of Object.entries(slow)) {
+    if (list.length >= 3) {
+      const [studentId, subjectId] = key.split('|');
+      const worst = list.sort((a, b) => b.actualMinutes / b.estimatedMinutes - a.actualMinutes / a.estimatedMinutes)[0];
+      add(studentId, 2,
+        `${SUBJECT_NAMES[subjectId] ?? subjectId} is taking much longer than planned: ${list.length} assignments ran 1.5×+ over estimate (e.g. “${worst.title}” took ${worst.actualMinutes} min vs ~${worst.estimatedMinutes} planned).`);
+    }
+  }
+
   // 3. Overdue pile-ups / repeated rescheduling per subject
   const overdueCount = {};
   const rescheduled = {};

@@ -143,6 +143,23 @@ describe('assignments', () => {
     );
   });
 
+  it('a student can record time-tracking fields on their own assignment', async () => {
+    await assertSucceeds(
+      updateDoc(doc(asLuke(), 'assignments/luke-1'), {
+        status: 'in_progress',
+        startedAt: 'now',
+        updatedAt: 'now',
+      })
+    );
+    await assertSucceeds(
+      updateDoc(doc(asLuke(), 'assignments/luke-1'), {
+        status: 'submitted',
+        actualMinutes: 37,
+        updatedAt: 'now',
+      })
+    );
+  });
+
   it('a student cannot change the scheduledDate on their own assignment', async () => {
     await assertFails(
       updateDoc(doc(asLuke(), 'assignments/luke-1'), { scheduledDate: '2026-08-18' })

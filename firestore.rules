@@ -62,9 +62,10 @@ service cloud.firestore {
 
       allow update: if isParent() || (
         isStudent(resource.data.studentId) &&
-        // students may only flip status between not_started/in_progress/submitted
+        // students may only flip status between not_started/in_progress/submitted,
+        // plus the time-tracking fields their own app writes
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'updatedAt']) &&
+          .hasOnly(['status', 'updatedAt', 'startedAt', 'actualMinutes']) &&
         request.resource.data.status in ['not_started', 'in_progress', 'submitted'] &&
         // never allowed to touch keyPath or scheduledDate regardless
         request.resource.data.keyPath == resource.data.keyPath &&

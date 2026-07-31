@@ -25,7 +25,7 @@ const bucket = admin.storage().bucket();
 // fileURLToPath decodes %20 etc. — .pathname does NOT, which silently broke
 // every existsSync check for the space in "HC Curriculum"
 const ROOT = fileURLToPath(new URL('../Hillsdale/HC Curriculum/', import.meta.url));
-const MATH_URL = 'https://digital.demmelearning.com/';
+const MATH_URL = 'https://digital.demmelearning.com/student-dashboard';
 const DONE = new Set(['submitted', 'graded', 'waived']);
 
 // ---- storage uploads: [localRelPath, storagePath] ----
