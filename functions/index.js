@@ -400,6 +400,25 @@ export const sendOutbox = onDocumentCreated(
 );
 
 // ---------------------------------------------------------------------------
+// Bug reports: when anyone files one in the app, Dad gets an email with
+// the kid's words plus the technical context.
+// ---------------------------------------------------------------------------
+
+export const bugReportEmail = onDocumentCreated(
+  { document: 'bugReports/{id}' },
+  async (event) => {
+    const b = event.data.data();
+    const who = b.studentId === 'abi' || !b.studentId ? 'Abi' : b.studentId[0].toUpperCase() + b.studentId.slice(1);
+    await admin.firestore().collection('outbox').add({
+      to: REPORT_EMAIL,
+      subject: `🐞 Bug report from ${who}`,
+      text: `${who} says:\n\n"${b.text}"\n\nContext:\n- Page: ${b.page}\n- Screen: ${b.screen}\n- Device: ${b.userAgent}\n\nPaste this into the Claude session and we'll squash it.`,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
 // Work-samples portfolio: assembles each kid's official packet for the
 // school — gradebook summary + their submitted work photos — as one PDF.
 // ---------------------------------------------------------------------------

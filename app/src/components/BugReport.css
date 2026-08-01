@@ -1,0 +1,81 @@
+.bug-btn {
+  background: rgba(255, 255, 255, 0.35);
+  border: none;
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.bug-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 40, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  padding: 1rem;
+}
+
+.bug-sheet {
+  background: white;
+  border-radius: 18px;
+  padding: 1.2rem 1.4rem;
+  width: 100%;
+  max-width: 440px;
+}
+
+.bug-sheet h3 { margin: 0 0 0.25rem; }
+
+.bug-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0 0 0.6rem;
+}
+
+.bug-sheet textarea {
+  width: 100%;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  padding: 0.7rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.bug-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.bug-cancel {
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  color: #666;
+}
+
+.bug-send {
+  border: none;
+  background: #b3402f;
+  color: white;
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bug-send:disabled { opacity: 0.45; }
+
+.bug-thanks {
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 1.25rem 0;
+  margin: 0;
+}

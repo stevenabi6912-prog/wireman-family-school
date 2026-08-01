@@ -13,6 +13,7 @@ import YearTrail from '../components/YearTrail';
 import SchoolCalendar from '../components/SchoolCalendar';
 import WeeklyReport from '../components/WeeklyReport';
 import ExplorerClub from '../components/ExplorerClub';
+import BugReport from '../components/BugReport';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
 import './StudentChecklist.css';
 
@@ -253,6 +254,7 @@ export default function StudentChecklist() {
           )}
           <button className="mine-btn" onClick={() => setPickerOpen(true)}>✨ {large ? 'My look' : 'Make it mine'}</button>
           <div className="hero-small-actions">
+            <BugReport studentId={studentId} large={large} />
             <button className="mute-btn" onClick={() => setCalOpen(true)} title="School calendar">📅</button>
             <button className="mute-btn" onClick={toggleMute} title={muted ? 'Turn sounds on' : 'Turn sounds off'}>
               {muted ? '🔇' : '🔊'}

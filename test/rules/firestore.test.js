@@ -216,6 +216,22 @@ describe('reports and mail', () => {
   });
 });
 
+describe('bugReports', () => {
+  it('a kid can file a bug report as themselves, cannot spoof or edit', async () => {
+    await assertSucceeds(
+      setDoc(doc(asLuke(), 'bugReports/b1'), { reportedBy: 'luke-uid', text: 'button broke' })
+    );
+    await assertFails(
+      setDoc(doc(asLuke(), 'bugReports/b2'), { reportedBy: 'layla-uid', text: 'x' })
+    );
+    await assertFails(
+      updateDoc(doc(asLuke(), 'bugReports/b1'), { text: 'edited' })
+    );
+    await assertFails(getDoc(doc(asLuke(), 'bugReports/b1')));
+    await assertSucceeds(getDoc(doc(asAbi(), 'bugReports/b1')));
+  });
+});
+
 describe('kidReports', () => {
   it('a kid reads their own weekly report, not a sibling\'s; nobody writes', async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {

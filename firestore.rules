@@ -119,6 +119,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- bug reports: any family member can file one (kids included);
+    //      only the parent reads them; nobody edits after filing. ----
+    match /bugReports/{id} {
+      allow read: if isParent();
+      allow create: if isSignedIn() &&
+        request.resource.data.reportedBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /explorations/{id} {
       allow read: if isParent();
       allow write: if false;

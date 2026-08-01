@@ -19,6 +19,7 @@ import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
 import MemoryWork from '../components/MemoryWork';
 import SchoolCalendar from '../components/SchoolCalendar';
+import BugReport from '../components/BugReport';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -102,6 +103,7 @@ export default function ParentDashboard() {
           </p>
         </div>
         <div className="dash-header-right">
+          <BugReport studentId={null} large={false} />
           <button className="dash-logout" onClick={() => setCalOpen(true)}>📅 Calendar</button>
           {year?.projectedEnd && (
             <span className={`year-chip ${year.projectedEnd > year.targetEnd ? 'year-chip-behind' : ''}`}>
