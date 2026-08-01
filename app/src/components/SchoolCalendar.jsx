@@ -17,7 +17,7 @@ export default function SchoolCalendar({ onClose }) {
     if (!family) return null;
     const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [], extraDays = [] } = family;
     const first = new Date(view.y, view.m, 1);
-    const startPad = (first.getDay() + 6) % 7; // Monday-first grid
+    const startPad = first.getDay(); // Sunday-first grid
     const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
     const cells = [];
     for (let i = 0; i < startPad; i++) cells.push(null);
@@ -62,7 +62,7 @@ export default function SchoolCalendar({ onClose }) {
         {!grid ? <p>Loading…</p> : (
           <>
             <div className="cal-grid cal-dow">
-              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i}>{d}</span>)}
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i}>{d}</span>)}
             </div>
             <div className="cal-grid">
               {grid.map((c, i) => c === null ? <span key={i} /> : (
