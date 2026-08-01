@@ -28,14 +28,14 @@ export default function SchoolCalendar({ onClose }) {
       const holiday = holidays.find((h) => iso >= h.start && iso <= h.end);
       const blockout = blockouts.find((b) => iso >= b.start && iso <= b.end);
       const inYear = iso >= schoolYearStart && iso <= schoolYearEnd;
-      const isMakeup = extraDays.includes(iso) && !holiday && !blockout;
-      const isSchool = (inYear && schoolDays.includes(isoWeekday) && !holiday && !blockout) || isMakeup;
+      const isMakeup = extraDays.includes(iso); // make-up beats holidays
+      const isSchool = isMakeup || (inYear && schoolDays.includes(isoWeekday) && !holiday && !blockout);
       cells.push({
         d, iso,
         school: isSchool,
         makeup: isMakeup,
-        label: holiday?.label ?? blockout?.label ?? null,
-        off: !!(holiday || blockout) && schoolDays.includes(isoWeekday) && inYear,
+        label: isMakeup ? null : holiday?.label ?? blockout?.label ?? null,
+        off: !isMakeup && !!(holiday || blockout) && schoolDays.includes(isoWeekday) && inYear,
         first: iso === schoolYearStart,
         last: iso === schoolYearEnd,
         today: iso === new Date().toLocaleDateString('sv-SE'),

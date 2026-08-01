@@ -30,10 +30,12 @@ export function buildCalendar(family, minDays = 0) {
   while (d <= hardStop) {
     const iso = toISO(d);
     const isoWeekday = ((d.getDay() + 6) % 7) + 1; // Mon=1..Sun=7
+    // An explicit make-up day wins over everything — including holidays.
     if (
-      (schoolDays.includes(isoWeekday) || extraDays.includes(iso)) &&
-      !inAnyRange(iso, holidays) &&
-      !inAnyRange(iso, blockouts)
+      extraDays.includes(iso) ||
+      (schoolDays.includes(isoWeekday) &&
+        !inAnyRange(iso, holidays) &&
+        !inAnyRange(iso, blockouts))
     ) {
       out.push(iso);
     }
