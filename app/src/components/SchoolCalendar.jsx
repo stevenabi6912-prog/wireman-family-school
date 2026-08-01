@@ -15,7 +15,7 @@ export default function SchoolCalendar({ onClose }) {
 
   const grid = useMemo(() => {
     if (!family) return null;
-    const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [] } = family;
+    const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [], extraDays = [] } = family;
     const first = new Date(view.y, view.m, 1);
     const startPad = (first.getDay() + 6) % 7; // Monday-first grid
     const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
@@ -28,10 +28,12 @@ export default function SchoolCalendar({ onClose }) {
       const holiday = holidays.find((h) => iso >= h.start && iso <= h.end);
       const blockout = blockouts.find((b) => iso >= b.start && iso <= b.end);
       const inYear = iso >= schoolYearStart && iso <= schoolYearEnd;
-      const isSchool = inYear && schoolDays.includes(isoWeekday) && !holiday && !blockout;
+      const isMakeup = extraDays.includes(iso) && !holiday && !blockout;
+      const isSchool = (inYear && schoolDays.includes(isoWeekday) && !holiday && !blockout) || isMakeup;
       cells.push({
         d, iso,
         school: isSchool,
+        makeup: isMakeup,
         label: holiday?.label ?? blockout?.label ?? null,
         off: !!(holiday || blockout) && schoolDays.includes(isoWeekday) && inYear,
         first: iso === schoolYearStart,
@@ -70,6 +72,7 @@ export default function SchoolCalendar({ onClose }) {
                   title={c.label ?? (c.school ? 'School day' : '')}
                 >
                   <span className="cal-num">{c.d}</span>
+                  {c.makeup && <span className="cal-flag">⭐</span>}
                   {c.first && <span className="cal-flag">🚀</span>}
                   {c.last && <span className="cal-flag">🏁</span>}
                   {c.off && <span className="cal-offlabel">{c.label}</span>}
@@ -79,6 +82,7 @@ export default function SchoolCalendar({ onClose }) {
             <div className="cal-legend">
               <span><i className="cal-dot cal-dot-school" /> School day</span>
               <span><i className="cal-dot cal-dot-off" /> Break / day off</span>
+              <span>⭐ Make-up day</span>
               <span>🚀 First day</span>
               <span>🏁 Last day</span>
             </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addBlockout, removeBlockout } from '../lib/reflow';
+import { addBlockout, removeBlockout, addMakeupDay, removeMakeupDay } from '../lib/reflow';
 import './DaysOff.css';
 
 // Parent-only editor for vacation/sick/co-op days. Saving immediately
@@ -12,7 +12,35 @@ export default function DaysOff({ family, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
+  const [makeup, setMakeup] = useState('');
   const blockouts = [...(family?.blockouts ?? [])].sort((a, b) => a.start.localeCompare(b.start));
+  const makeupDays = [...(family?.extraDays ?? [])].sort();
+
+  async function onAddMakeup() {
+    if (!makeup) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await addMakeupDay(makeup);
+      setResult(r);
+      setMakeup('');
+      onChanged?.();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onRemoveMakeup(d) {
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await removeMakeupDay(d);
+      setResult(r);
+      onChanged?.();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onAdd() {
     if (!start) return;
@@ -84,6 +112,33 @@ export default function DaysOff({ family, onChanged }) {
               </span>
               <span className="daysoff-name">{b.label}</span>
               <button className="daysoff-remove" onClick={() => onRemove(b.id)} disabled={busy}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3 className="makeup-title">Make-up school days</h3>
+      <p className="daysoff-hint">
+        Running past the June 3 goal? Add a Friday (or any off day) as a school day — each one pulls the end date back.
+      </p>
+      <div className="daysoff-form">
+        <label>
+          Date
+          <input type="date" value={makeup} onChange={(e) => setMakeup(e.target.value)} disabled={busy} />
+        </label>
+        <button className="daysoff-add makeup-add" onClick={onAddMakeup} disabled={busy || !makeup}>
+          {busy ? 'Rescheduling…' : 'Make it a school day'}
+        </button>
+      </div>
+      {makeupDays.length > 0 && (
+        <ul className="daysoff-list">
+          {makeupDays.map((d) => (
+            <li key={d}>
+              <span className="daysoff-range">{d}</span>
+              <span className="daysoff-name">extra school day</span>
+              <button className="daysoff-remove" onClick={() => onRemoveMakeup(d)} disabled={busy}>
                 Remove
               </button>
             </li>

@@ -29,6 +29,21 @@ export async function addBlockout(start, end, label) {
   return reflowAll();
 }
 
+// Make-up school days (usually Fridays): each one pulls the year's end a
+// day earlier. Same reflow machinery as blockouts, opposite direction.
+export async function addMakeupDay(iso) {
+  await updateDoc(doc(db, 'families', 'wireman'), { extraDays: arrayUnion(iso) });
+  return reflowAll();
+}
+
+export async function removeMakeupDay(iso) {
+  const family = await getFamily();
+  await updateDoc(doc(db, 'families', 'wireman'), {
+    extraDays: (family.extraDays ?? []).filter((d) => d !== iso),
+  });
+  return reflowAll();
+}
+
 export async function removeBlockout(blockoutId) {
   const family = await getFamily();
   const next = (family.blockouts ?? []).filter((b) => b.id !== blockoutId);

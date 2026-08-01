@@ -105,3 +105,13 @@
   cursor: pointer;
   color: #b3402f;
 }
+
+.makeup-title {
+  margin: 1.25rem 0 0.15rem;
+  font-size: 1.05rem;
+  color: #2a2a2a;
+}
+
+.makeup-add {
+  background: #2c7a48;
+}

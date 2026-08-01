@@ -21,7 +21,7 @@ function inAnyRange(iso, ranges) {
 // honoring schoolDays (ISO weekday ints, Mon=1), holidays, and blockouts.
 // Extends past schoolYearEnd if blockouts push the required day count later.
 export function buildCalendar(family, minDays = 0) {
-  const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [] } = family;
+  const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [], extraDays = [] } = family;
   const out = [];
   const start = parseISO(schoolYearStart);
   const hardStop = parseISO(schoolYearEnd);
@@ -31,7 +31,7 @@ export function buildCalendar(family, minDays = 0) {
     const iso = toISO(d);
     const isoWeekday = ((d.getDay() + 6) % 7) + 1; // Mon=1..Sun=7
     if (
-      schoolDays.includes(isoWeekday) &&
+      (schoolDays.includes(isoWeekday) || extraDays.includes(iso)) &&
       !inAnyRange(iso, holidays) &&
       !inAnyRange(iso, blockouts)
     ) {
