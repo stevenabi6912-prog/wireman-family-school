@@ -20,6 +20,8 @@ import ReviewCard from '../components/ReviewCard';
 import MemoryWork from '../components/MemoryWork';
 import SchoolCalendar from '../components/SchoolCalendar';
 import BugReport from '../components/BugReport';
+import AbiTheme from '../components/AbiTheme';
+import { PALETTES } from '../config/themes';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -40,6 +42,7 @@ export default function ParentDashboard() {
 
   const [grades, setGrades] = useState([]);
   const [calOpen, setCalOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
 
   useEffect(() => {
     const unsubA = watchAssignmentsThroughToday(setAssignments);
@@ -93,16 +96,20 @@ export default function ParentDashboard() {
     return <div className="loading-screen">Loading the family…</div>;
   }
 
+  const abiTheme = year?.family?.parentTheme ?? { palette: 'bubblegum', avatar: '☀️' };
+  const abiColors = PALETTES[abiTheme.palette] ?? PALETTES.bubblegum;
+
   return (
-    <div className="dash-screen">
+    <div className="dash-screen" style={{ '--a-bg': abiColors.bg, '--a-accent': abiColors.accent, background: abiColors.bg }}>
       <header className="dash-header">
         <div>
-          <h1>{greeting()}, Abi ☀️</h1>
+          <h1>{greeting()}, Abi {abiTheme.avatar}</h1>
           <p className="dash-date">
             {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
         <div className="dash-header-right">
+          <button className="dash-logout" onClick={() => setThemeOpen(true)}>✨</button>
           <BugReport studentId={null} large={false} />
           <button className="dash-logout" onClick={() => setCalOpen(true)}>📅 Calendar</button>
           {year?.projectedEnd && (
@@ -226,6 +233,9 @@ export default function ParentDashboard() {
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
 
       {calOpen && <SchoolCalendar onClose={() => setCalOpen(false)} />}
+      {themeOpen && (
+        <AbiTheme current={abiTheme} onClose={() => { setThemeOpen(false); refreshYear(); }} />
+      )}
 
       <p className="records-link-row">
         <Link to="/records" className="records-link">📄 Gradebook & printable records</Link>
