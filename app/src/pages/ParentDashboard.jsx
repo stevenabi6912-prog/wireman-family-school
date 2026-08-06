@@ -18,6 +18,7 @@ import { computeStruggleFlags } from '../lib/struggles';
 import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
 import MemoryWork from '../components/MemoryWork';
+import RecitePanel from '../components/RecitePanel';
 import SchoolCalendar from '../components/SchoolCalendar';
 import BugReport from '../components/BugReport';
 import AbiTheme from '../components/AbiTheme';
@@ -227,6 +228,8 @@ export default function ParentDashboard() {
           </ul>
         )}
       </section>
+
+      <RecitePanel students={students ?? {}} order={STUDENT_ORDER} />
 
       <MemoryWork students={students} order={STUDENT_ORDER} />
 

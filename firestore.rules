@@ -114,6 +114,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- memory & recitation plan: whole family reads; Abi curates.
+    //      Attempts (Day-4 recitations) are parent-recorded; kids see their own. ----
+    match /memoryItems/{id} {
+      allow read: if isSignedIn();
+      allow write: if isParent();
+    }
+
+    match /memoryAttempts/{id} {
+      allow read: if isParent() || isStudent(resource.data.studentId);
+      allow write: if isParent();
+    }
+
     match /kidReports/{reportId} {
       allow read: if isParent() || isStudent(resource.data.studentId);
       allow write: if false;

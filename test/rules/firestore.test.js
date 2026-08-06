@@ -216,6 +216,22 @@ describe('reports and mail', () => {
   });
 });
 
+describe('memory plan', () => {
+  it('kids read memory items but cannot write; parent curates', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'memoryItems/m1'), { track: 'bible', week: 1 });
+      await setDoc(doc(context.firestore(), 'memoryAttempts/a1'), { studentId: 'luke', result: 'pass' });
+    });
+    await assertSucceeds(getDoc(doc(asLuke(), 'memoryItems/m1')));
+    await assertFails(updateDoc(doc(asLuke(), 'memoryItems/m1'), { week: 2 }));
+    await assertSucceeds(updateDoc(doc(asAbi(), 'memoryItems/m1'), { week: 1 }));
+    await assertSucceeds(getDoc(doc(asLuke(), 'memoryAttempts/a1')));
+    await assertFails(getDoc(doc(asLayla(), 'memoryAttempts/a1')));
+    await assertFails(setDoc(doc(asLuke(), 'memoryAttempts/a2'), { studentId: 'luke', result: 'pass' }));
+    await assertSucceeds(setDoc(doc(asAbi(), 'memoryAttempts/a2'), { studentId: 'luke', result: 'pass' }));
+  });
+});
+
 describe('bugReports', () => {
   it('a kid can file a bug report as themselves, cannot spoof or edit', async () => {
     await assertSucceeds(

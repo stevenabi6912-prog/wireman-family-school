@@ -14,6 +14,7 @@ import SchoolCalendar from '../components/SchoolCalendar';
 import WeeklyReport from '../components/WeeklyReport';
 import ExplorerClub from '../components/ExplorerClub';
 import BugReport from '../components/BugReport';
+import MemoryBlock from '../components/MemoryBlock';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
 import './StudentChecklist.css';
 
@@ -327,6 +328,8 @@ export default function StudentChecklist() {
           )}
         </>
       )}
+
+      <MemoryBlock studentId={studentId} large={large} />
 
       <WeeklyReport studentId={studentId} justFinished={allDone} />
 
