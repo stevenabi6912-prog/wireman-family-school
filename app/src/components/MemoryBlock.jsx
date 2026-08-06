@@ -104,11 +104,21 @@ function SpanishShelf({ large }) {
   useEffect(() => {
     if (!folder) return;
     setFiles(null);
+    // The zips unpack with the tracks either directly in the folder (Bridge)
+    // or inside CD subfolders (Sí Sí) — list one level of subfolders too.
     listAll(ref(storage, folder))
-      .then((res) => {
-        const list = res.items
-          .map((i) => ({ name: i.name, fullPath: i.fullPath }))
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      .then(async (res) => {
+        const subs = await Promise.all(res.prefixes.map((p) => listAll(p)));
+        const list = [
+          ...res.items.map((i) => ({ name: i.name, fullPath: i.fullPath, group: null })),
+          ...subs.flatMap((sub, idx) =>
+            sub.items.map((i) => ({ name: i.name, fullPath: i.fullPath, group: res.prefixes[idx].name }))
+          ),
+        ].sort(
+          (a, b) =>
+            (a.group ?? '').localeCompare(b.group ?? '', undefined, { numeric: true }) ||
+            a.name.localeCompare(b.name, undefined, { numeric: true })
+        );
         setFiles(list);
       })
       .catch(() => setFiles([]));
@@ -153,7 +163,7 @@ function SpanishShelf({ large }) {
                 className={`spanish-file-btn ${playing?.name === f.name ? 'playing' : ''}`}
                 onClick={() => play(f)}
               >
-                {playing?.name === f.name ? '🔊' : '▶'} {cleanName(f.name)}
+                {playing?.name === f.name ? '🔊' : '▶'} {f.group ? `${cleanName(f.group)} · ` : ''}{cleanName(f.name)}
               </button>
             ))}
           </div>
@@ -165,5 +175,7 @@ function SpanishShelf({ large }) {
 }
 
 function cleanName(name) {
+  const cd = name.match(/cd(\d+)$/i);
+  if (cd) return `CD ${cd[1]}`;
   return name.replace(/\.[a-z0-9]+$/i, '').replaceAll('-', ' ');
 }
