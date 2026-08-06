@@ -57,7 +57,8 @@ async function main() {
   console.log('NOTE: placement screeners were dayIndex-less and got deleted — re-run scripts/add-placement-week.js to restore them for day 1-2.');
 
   // 2. progress artifacts
-  for (const c of ['submissions', 'grades', 'kidReports', 'explorations', 'bugReports', 'reports', 'outbox', 'mail', 'gradingNotes']) {
+  // memoryAttempts = test-run recitations (the memoryItems PLAN is kept)
+  for (const c of ['submissions', 'grades', 'kidReports', 'explorations', 'bugReports', 'reports', 'outbox', 'mail', 'gradingNotes', 'memoryAttempts']) {
     await wipeCollection(c);
   }
   console.log('Fresh slate ready. First day: 2026-08-17. 🚀');

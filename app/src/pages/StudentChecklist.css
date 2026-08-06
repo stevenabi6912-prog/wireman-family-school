@@ -497,3 +497,10 @@
   font-size: 0.95rem;
   vertical-align: middle;
 }
+
+/* SOTW audiobook player inside a history card */
+.chapter-audio {
+  width: 100%;
+  max-width: 480px;
+  margin: 8px 0;
+}

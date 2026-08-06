@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
-import { markStarted, completeAssignment } from '../lib/assignments';
+import { markStarted, completeAssignment, resolveContentUrl } from '../lib/assignments';
 
 const TYPE_LABELS = {
   reading: '📖 Reading',
@@ -74,6 +74,8 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
             )
           )}
 
+          <ChapterAudio assignment={assignment} />
+
           {assignment.itemType === 'memorization' && memoryWork && (
             <div className="memwork-list">
               <p className="memwork-list-title">📜 Your memory work from Mom:</p>
@@ -102,5 +104,40 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
         </div>
       )}
     </div>
+  );
+}
+
+// Story of the World audiobook: any history item that names a chapter gets a
+// listen button, so the younger kids can hear the story read aloud.
+function ChapterAudio({ assignment }) {
+  const [url, setUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const chapter =
+    assignment.subjectId === 'history'
+      ? assignment.title?.match(/Ch(?:apter|\.)\s*(\d+)/)?.[1]
+      : null;
+
+  if (!chapter) return null;
+
+  async function load() {
+    setLoading(true);
+    try {
+      const u = await resolveContentUrl(`curriculum/history/sotw2-audio/chapter-${chapter}.mp3`);
+      setUrl(u);
+    } catch {
+      setUrl('missing');
+    }
+    setLoading(false);
+  }
+
+  if (url && url !== 'missing') {
+    return <audio className="chapter-audio" controls autoPlay src={url} />;
+  }
+  if (url === 'missing') return null;
+  return (
+    <button className="video-link" onClick={load} disabled={loading}>
+      {loading ? 'Loading the story…' : `🎧 Listen to Chapter ${chapter}`}
+    </button>
   );
 }
