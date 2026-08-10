@@ -23,7 +23,10 @@ function inAnyRange(iso, ranges) {
 export function buildCalendar(family, minDays = 0) {
   const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [], extraDays = [] } = family;
   const out = [];
-  const start = parseISO(schoolYearStart);
+  // A make-up day placed BEFORE the official start (an early-start day) moves
+  // the walk's starting point back so it still lands in the calendar.
+  const firstExtra = [...extraDays].sort()[0];
+  const start = parseISO(firstExtra && firstExtra < schoolYearStart ? firstExtra : schoolYearStart);
   const hardStop = parseISO(schoolYearEnd);
   hardStop.setDate(hardStop.getDate() + 120); // safety margin for reflow overruns
   const d = new Date(start);
@@ -31,9 +34,11 @@ export function buildCalendar(family, minDays = 0) {
     const iso = toISO(d);
     const isoWeekday = ((d.getDay() + 6) % 7) + 1; // Mon=1..Sun=7
     // An explicit make-up day wins over everything — including holidays.
+    // Regular weekdays only count once the year has officially started.
     if (
       extraDays.includes(iso) ||
-      (schoolDays.includes(isoWeekday) &&
+      (iso >= schoolYearStart &&
+        schoolDays.includes(isoWeekday) &&
         !inAnyRange(iso, holidays) &&
         !inAnyRange(iso, blockouts))
     ) {
