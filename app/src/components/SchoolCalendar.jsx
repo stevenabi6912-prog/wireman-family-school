@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { buildCalendar } from '../lib/calendar';
 import './SchoolCalendar.css';
 
 // Family calendar everyone can open: which days are school, which are
@@ -16,6 +17,9 @@ export default function SchoolCalendar({ onClose }) {
   const grid = useMemo(() => {
     if (!family) return null;
     const { schoolYearStart, schoolYearEnd, schoolDays, holidays = [], blockouts = [], extraDays = [] } = family;
+    // The rocket goes on the first REAL school day (an early make-up day can
+    // beat the official start date — like Abi's Aug 11 early start).
+    const firstSchoolDay = buildCalendar(family, 1)[0] ?? schoolYearStart;
     const first = new Date(view.y, view.m, 1);
     const startPad = first.getDay(); // Sunday-first grid
     const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
@@ -36,7 +40,7 @@ export default function SchoolCalendar({ onClose }) {
         makeup: isMakeup,
         label: isMakeup ? null : holiday?.label ?? blockout?.label ?? null,
         off: !isMakeup && !!(holiday || blockout) && schoolDays.includes(isoWeekday) && inYear,
-        first: iso === schoolYearStart,
+        first: iso === firstSchoolDay,
         last: iso === schoolYearEnd,
         today: iso === new Date().toLocaleDateString('sv-SE'),
       });
