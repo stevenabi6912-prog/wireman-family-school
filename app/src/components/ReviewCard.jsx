@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { resolveContentUrl } from '../lib/assignments';
 import { gradePct, overrideGrade, approveGrade } from '../lib/grades';
+import WorkViewer from './WorkViewer';
 
 // One grade waiting on Abi — plain words, and the kid's actual work
 // (typed answers + photos + the pages they worked from) one tap away.
@@ -10,9 +10,6 @@ export default function ReviewCard({ grade, studentName }) {
   const [value, setValue] = useState('');
   const [open, setOpen] = useState(false);
   const [assignment, setAssignment] = useState(null);
-  const [submission, setSubmission] = useState(null);
-  const [photoUrls, setPhotoUrls] = useState([]);
-  const [pagesUrl, setPagesUrl] = useState(null);
 
   useEffect(() => {
     getDoc(doc(db, 'assignments', grade.assignmentId)).then((s) => {
@@ -20,23 +17,7 @@ export default function ReviewCard({ grade, studentName }) {
     });
   }, [grade.assignmentId]);
 
-  useEffect(() => {
-    if (!open) return;
-    getDoc(doc(db, 'submissions', grade.assignmentId)).then((s) => {
-      if (s.exists()) setSubmission(s.data());
-    });
-  }, [open, grade.assignmentId]);
 
-  useEffect(() => {
-    if (!open) return;
-    if (assignment?.contentPath) {
-      resolveContentUrl(assignment.contentPath).then(setPagesUrl).catch(() => {});
-    }
-    if (submission?.fileUrls?.length) {
-      Promise.all(submission.fileUrls.map((p) => resolveContentUrl(p).catch(() => null)))
-        .then((urls) => setPhotoUrls(urls.filter(Boolean)));
-    }
-  }, [open, assignment?.contentPath, submission?.fileUrls]);
 
   const scored = (grade.overriddenScore ?? grade.score) != null;
 
@@ -58,21 +39,7 @@ export default function ReviewCard({ grade, studentName }) {
           {open ? 'Hide their work' : '👀 See their work'}
         </button>
 
-        {open && (
-          <div className="review-work">
-            {submission?.text
-              ? <pre className="review-answers">{submission.text}</pre>
-              : <p className="review-note">No typed answers{submission?.fileUrls?.length ? ' — see photos below' : ' or photos were turned in'}.</p>}
-            {photoUrls.map((u, i) => (
-              <a key={i} href={u} target="_blank" rel="noreferrer">
-                <img className="review-photo" src={u} alt={`work photo ${i + 1}`} />
-              </a>
-            ))}
-            {pagesUrl && (
-              <p><a className="review-pages-link" href={pagesUrl} target="_blank" rel="noreferrer">📖 Open the pages this came from</a></p>
-            )}
-          </div>
-        )}
+        <WorkViewer grade={grade} open={open} />
       </div>
       <div className="review-actions">
         <input

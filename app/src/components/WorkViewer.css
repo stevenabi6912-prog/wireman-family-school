@@ -1,0 +1,101 @@
+.work-viewer {
+  background: #faf9ff;
+  border: 1px solid #e4e2ef;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  text-align: left;
+}
+
+.work-label {
+  margin: 10px 0 4px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+}
+
+.work-instructions {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.work-answers {
+  white-space: pre-wrap;
+  background: #fff;
+  border: 1px solid #e0dcf0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0;
+  font-size: 0.9rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.work-note {
+  font-size: 0.9rem;
+  color: #777;
+  margin: 6px 0;
+}
+
+.work-photos {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.work-photo {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.work-wrong {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+}
+
+.work-wrong li { margin: 3px 0; }
+
+.work-summary {
+  background: #fff4ec;
+  border-left: 4px solid #f0a868;
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+  margin: 10px 0 4px;
+  font-size: 0.9rem;
+}
+
+.work-pages {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #6c5ce7;
+}
+
+/* low-score rows in the gradebook */
+.grade-row-low td { background: #fff2f2; }
+
+.grade-low-chip {
+  display: inline-block;
+  margin-left: 6px;
+  background: #d9534f;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.grade-see-btn {
+  border: none;
+  background: none;
+  color: #6c5ce7;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0;
+}

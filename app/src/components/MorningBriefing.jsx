@@ -9,7 +9,7 @@ import './MorningBriefing.css';
 
 // Abi's one-glance start to the day: where each kid stands, what needs HER
 // today (recite day, screeners, grading), and the pause-the-day buttons.
-export default function MorningBriefing({ students, byStudent, order, reviewCount }) {
+export default function MorningBriefing({ students, byStudent, order, reviewCount, lowScores = [] }) {
   const [family, setFamily] = useState(null);
   const today = todayISO();
 
@@ -34,6 +34,9 @@ export default function MorningBriefing({ students, byStudent, order, reviewCoun
   }
 
   const needsYou = [];
+  for (const g of lowScores) {
+    needsYou.push(`⚠️ ${students?.[g.studentId]?.name ?? g.studentId} scored ${g.pct}% on ${g.title} — open the gradebook to see the work.`);
+  }
   if (dayInfo?.school && dayInfo.dow === 4) needsYou.push(`🎤 Day 4 — recitation day (Week ${dayInfo.week}). The recite screen is ready below.`);
   if (reviewCount > 0) needsYou.push(`👀 ${reviewCount} item${reviewCount > 1 ? 's' : ''} in "Needs your eyes."`);
   for (const id of order) {
@@ -173,6 +176,7 @@ export function FamilyQuest({ editable }) {
 
 // Email preferences: which automatic emails go out. Missing key = on.
 const EMAILS = [
+  ['lowScore', 'Tell me right away if something scores under 65%'],
   ['nightly', 'Nightly report (Mon–Thu 5:30pm)'],
   ['fridayWins', 'Friday wins email'],
   ['sundayPacket', 'Sunday printable packet'],

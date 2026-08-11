@@ -369,6 +369,17 @@ async function runGrading(submissionId, submission) {
         console.error(`clean-up scheduling failed for ${submission.assignmentId}:`, String(err).slice(0, 200));
       }
     }
+
+    // Anything under 65% goes to Abi right away — she wants to see a rough
+    // one while the lesson is still fresh, not at 5:30pm.
+    try {
+      await alertLowScore({
+        db, student, studentId: submission.studentId,
+        assignment, assignmentId: submission.assignmentId, result,
+      });
+    } catch (err) {
+      console.error(`low-score alert failed for ${submission.assignmentId}:`, String(err).slice(0, 200));
+    }
   } catch (err) {
     console.error(`Grading failed for ${submissionId}:`, err);
     await gradeRef.set({
@@ -387,6 +398,68 @@ async function runGrading(submissionId, submission) {
       gradedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }
+}
+
+// Immediate heads-up when a graded item comes in under 65%. Sends once per
+// assignment (the doc id is the assignment), so a regrade can't spam her.
+const LOW_SCORE_CUTOFF = 0.65;
+
+async function alertLowScore({ db, student, studentId, assignment, assignmentId, result }) {
+  if (result.score == null || !(result.maxScore > 0)) return;
+  const pct = Math.round((result.score / result.maxScore) * 100);
+  if (pct >= LOW_SCORE_CUTOFF * 100) return;
+
+  // emailPrefs.lowScore === false turns these off; anything else leaves them on.
+  if (!(await emailPrefEnabled('lowScore'))) return;
+
+  const alertRef = db.doc(`lowScoreAlerts/${assignmentId}`);
+  const name = student?.name ?? KID_NAMES?.[studentId] ?? studentId;
+  const wrong = (result.perQuestion ?? []).filter((q) => q.correct === false);
+
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">
+      <div style="background:#d9534f;color:#fff;padding:14px 18px;border-radius:12px 12px 0 0">
+        <h2 style="margin:0;font-size:18px">${esc(name)} scored ${pct}% just now</h2>
+      </div>
+      <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:16px 18px">
+        <p style="margin:0 0 10px"><strong>${esc(assignment.title ?? 'Assignment')}</strong><br>
+          <span style="color:#666">${result.score} out of ${result.maxScore}</span></p>
+        ${result.misunderstandingSummary
+          ? `<p style="background:#fff4ec;border-left:4px solid #f0a868;padding:10px 12px;margin:10px 0">
+               <strong>What the grader noticed:</strong><br>${esc(result.misunderstandingSummary)}</p>`
+          : ''}
+        ${wrong.length
+          ? `<p style="margin:10px 0 4px"><strong>Marked wrong:</strong></p>
+             <ul style="margin:0;padding-left:20px;color:#444">
+               ${wrong.slice(0, 10).map((q) => `<li>#${esc(String(q.questionNumber))} ${esc(q.note ?? '')}</li>`).join('')}
+             </ul>`
+          : ''}
+        <p style="margin:16px 0 0">
+          <a href="https://stevenabi6912-prog.github.io/wireman-family-school/records"
+             style="background:#6c5ce7;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:700">
+            See their actual work
+          </a>
+        </p>
+        <p style="color:#888;font-size:12px;margin-top:14px">
+          A clean-up practice question has already been added to tomorrow's list.
+        </p>
+      </div>
+    </div>`;
+
+  // create() throws if it already exists — that's the once-only guard.
+  await alertRef.create({
+    studentId,
+    assignmentId,
+    pct,
+    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  await db.collection('outbox').add({
+    to: 'stevenabi6912@gmail.com',
+    subject: `⚠️ ${name} scored ${pct}% — ${assignment.title ?? 'assignment'}`,
+    html,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
 }
 
 // Draft -> submitted transition on update

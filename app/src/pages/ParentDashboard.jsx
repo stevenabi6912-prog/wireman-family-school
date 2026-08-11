@@ -92,6 +92,26 @@ export default function ParentDashboard() {
     () => computeStruggleFlags({ grades, assignments: assignments ?? [] }),
     [grades, assignments]
   );
+  // Rough scores from today, surfaced on the briefing so a low grade is
+  // impossible to miss even if she never opens the email.
+  const lowScoresToday = useMemo(() => {
+    const titles = {};
+    for (const a of assignments ?? []) titles[a.id] = a.title;
+    return grades
+      .filter((g) => {
+        const score = g.overriddenScore ?? g.score;
+        if (score == null || !(g.maxScore > 0)) return false;
+        const when = g.gradedAt?.toDate?.();
+        if (!when || when.toLocaleDateString('sv-SE') !== today) return false;
+        return score / g.maxScore < 0.65;
+      })
+      .map((g) => ({
+        studentId: g.studentId,
+        pct: Math.round(((g.overriddenScore ?? g.score) / g.maxScore) * 100),
+        title: titles[g.assignmentId] ?? 'an assignment',
+      }));
+  }, [grades, assignments, today]);
+
   const reviewQueue = useMemo(
     () => grades.filter((g) => g.needsManualReview).sort((a, b) => (b.gradedAt?.seconds ?? 0) - (a.gradedAt?.seconds ?? 0)),
     [grades]
@@ -127,7 +147,13 @@ export default function ParentDashboard() {
         </div>
       </header>
 
-      <MorningBriefing students={students} byStudent={byStudent} order={STUDENT_ORDER} reviewCount={reviewQueue.length} />
+      <MorningBriefing
+        students={students}
+        byStudent={byStudent}
+        order={STUDENT_ORDER}
+        reviewCount={reviewQueue.length}
+        lowScores={lowScoresToday}
+      />
 
       <SearchBox students={students} grades={grades} />
 

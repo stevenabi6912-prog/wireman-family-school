@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { watchAllGrades, watchStudents } from './recordsData';
 import { gradePct, computeAverages, gradesToCSV } from '../lib/grades';
 import { ReportCards, AffidavitButton } from '../components/AbiExtras';
+import WorkViewer from '../components/WorkViewer';
 import './Records.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -20,6 +21,7 @@ export default function Records() {
   const [students, setStudents] = useState({});
   const [allAssignments, setAllAssignments] = useState([]);
   const [subjectFilter, setSubjectFilter] = useState('all');
+  const [openWork, setOpenWork] = useState(null); // which grade's work is expanded
 
   useEffect(() => {
     const unsubG = watchAllGrades(setGrades);
@@ -128,23 +130,43 @@ export default function Records() {
             {list.length > 0 && (
               <table className="records-table">
                 <thead>
-                  <tr><th>Date</th><th>Subject</th><th>Assignment</th><th>Score</th><th>%</th></tr>
+                  <tr><th>Date</th><th>Subject</th><th>Assignment</th><th>Score</th><th>%</th><th></th></tr>
                 </thead>
                 <tbody>
                   {list.map((g) => {
                     const pct = gradePct(g);
+                    const low = pct != null && pct < 65;
+                    const isOpen = openWork === g.id;
                     return (
-                      <tr key={g.id}>
-                        <td>{g.gradedAt?.toDate?.()?.toLocaleDateString?.() ?? ''}</td>
-                        <td>{SUBJECT_NAMES[g.subjectId] ?? g.subjectId}</td>
-                        <td>{assignmentTitles[g.assignmentId] ?? g.assignmentId}</td>
-                        <td>
-                          {(g.overriddenScore ?? g.score) == null
-                            ? 'review'
-                            : `${g.overriddenScore ?? g.score}/${g.maxScore}${g.overriddenScore != null ? ' *' : ''}`}
-                        </td>
-                        <td>{pct == null ? '—' : `${pct}%`}</td>
-                      </tr>
+                      <Fragment key={g.id}>
+                        <tr className={low ? 'grade-row-low' : ''}>
+                          <td>{g.gradedAt?.toDate?.()?.toLocaleDateString?.() ?? ''}</td>
+                          <td>{SUBJECT_NAMES[g.subjectId] ?? g.subjectId}</td>
+                          <td>{assignmentTitles[g.assignmentId] ?? g.assignmentId}</td>
+                          <td>
+                            {(g.overriddenScore ?? g.score) == null
+                              ? 'review'
+                              : `${g.overriddenScore ?? g.score}/${g.maxScore}${g.overriddenScore != null ? ' *' : ''}`}
+                          </td>
+                          <td>
+                            {pct == null ? '—' : `${pct}%`}
+                            {low && <span className="grade-low-chip">needs a look</span>}
+                          </td>
+                          <td>
+                            <button
+                              className="grade-see-btn no-print"
+                              onClick={() => setOpenWork(isOpen ? null : g.id)}
+                            >
+                              {isOpen ? 'hide' : '👀 see the work'}
+                            </button>
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="no-print">
+                            <td colSpan={6}><WorkViewer grade={g} open /></td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
