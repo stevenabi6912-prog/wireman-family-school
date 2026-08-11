@@ -278,6 +278,48 @@ describe('batch-2 collections', () => {
   });
 });
 
+describe('sibling games', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'games/g1'), {
+        type: 'chess', players: ['luke', 'logan'], turn: 'luke', status: 'active', state: {},
+      });
+      await setDoc(doc(db, 'games/g1/fleets/luke'), { ships: [{ name: 'Destroyer', size: 2, cells: [0, 1] }] });
+    });
+  });
+
+  it('only the two players can read or move in a match', async () => {
+    await assertSucceeds(getDoc(doc(asLuke(), 'games/g1')));
+    await assertFails(getDoc(doc(asLayla(), 'games/g1')));
+    await assertSucceeds(updateDoc(doc(asLuke(), 'games/g1'), { turn: 'logan' }));
+    await assertFails(updateDoc(doc(asLayla(), 'games/g1'), { turn: 'layla' }));
+  });
+
+  it('nobody can add themselves to somebody else\'s game', async () => {
+    await assertFails(
+      updateDoc(doc(asLuke(), 'games/g1'), { players: ['luke', 'logan', 'layla'] })
+    );
+  });
+
+  it('a battleship fleet is invisible to the opponent', async () => {
+    await assertSucceeds(getDoc(doc(asLuke(), 'games/g1/fleets/luke')));
+    const asLogan = testEnv.authenticatedContext('logan-uid', { role: 'student', studentId: 'logan' }).firestore();
+    await assertFails(getDoc(doc(asLogan, 'games/g1/fleets/luke')));
+    await assertSucceeds(setDoc(doc(asLogan, 'games/g1/fleets/logan'), { ships: [] }));
+    await assertSucceeds(getDoc(doc(asAbi(), 'games/g1/fleets/luke')));
+  });
+
+  it('a student can start a game they are part of, not one they are not', async () => {
+    await assertSucceeds(
+      setDoc(doc(asLuke(), 'games/g2'), { type: 'pool', players: ['luke', 'lazarus'], turn: 'luke', status: 'active', state: {} })
+    );
+    await assertFails(
+      setDoc(doc(asLuke(), 'games/g3'), { type: 'pool', players: ['layla', 'lazarus'], turn: 'layla', status: 'active', state: {} })
+    );
+  });
+});
+
 describe('bugReports', () => {
   it('a kid can file a bug report as themselves, cannot spoof or edit', async () => {
     await assertSucceeds(

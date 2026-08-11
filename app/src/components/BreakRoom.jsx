@@ -3,13 +3,24 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BREAK_SECONDS, loadGame, saveGame } from '../lib/breaks';
 import { makeSudoku, makeWordSearch, WORD_THEMES, SCRAMBLES, TRIVIA, TYPING_WORDS } from './breakGames';
+import VersusGames from './VersusGames';
+import { watchMyGames } from '../lib/versus';
 import { playDing, playFanfare } from '../lib/sounds';
 import './BreakRoom.css';
 
 // 5-minute brain break: pick a game, timer runs, hard cutoff, progress saved.
 export default function BreakRoom({ studentId, large, onClose }) {
   const [secondsLeft, setSecondsLeft] = useState(BREAK_SECONDS);
-  const [game, setGame] = useState(null); // 'sudoku' | 'wordsearch' | 'builder' | 'trivia'
+  const [game, setGame] = useState(null); // 'sudoku' | 'wordsearch' | 'builder' | 'trivia' | 'versus'
+  const [myTurnCount, setMyTurnCount] = useState(0);
+
+  // Badge on the versus button so a waiting sibling game gets noticed.
+  useEffect(
+    () => watchMyGames(studentId, (games) =>
+      setMyTurnCount(games.filter((g) => g.status !== 'over' && g.turn === studentId).length)
+    ),
+    [studentId]
+  );
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -44,6 +55,9 @@ export default function BreakRoom({ studentId, large, onClose }) {
             <button onClick={() => setGame('builder')}>🔤 Word Builder</button>
             <button onClick={() => setGame('trivia')}>🏰 Castle Trivia</button>
             <button onClick={() => setGame('typing')}>⌨️ Typing Sprint</button>
+            <button className="break-versus" onClick={() => setGame('versus')}>
+              ⚔️ Play a sibling{myTurnCount > 0 && <span className="break-turnbadge">{myTurnCount}</span>}
+            </button>
           </div>
         ) : (
           <>
@@ -53,6 +67,7 @@ export default function BreakRoom({ studentId, large, onClose }) {
             {game === 'builder' && <WordBuilder studentId={studentId} />}
             {game === 'trivia' && <Trivia studentId={studentId} />}
             {game === 'typing' && <TypingSprint studentId={studentId} />}
+            {game === 'versus' && <VersusGames studentId={studentId} large={large} />}
           </>
         )}
         {secondsLeft > 0 && (

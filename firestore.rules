@@ -138,6 +138,30 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- sibling games (chess/checkers/battleship/pool): only the two
+    //      players at the board may see or touch the match. The roster is
+    //      frozen at creation so nobody can add themselves to a game. ----
+    match /games/{gameId} {
+      function amPlaying(list) {
+        return isParent() ||
+          (isSignedIn() && request.auth.token.role == 'student'
+            && request.auth.token.studentId in list);
+      }
+
+      allow read: if amPlaying(resource.data.players);
+      allow create: if amPlaying(request.resource.data.players)
+        && request.resource.data.players.size() == 2;
+      allow update: if amPlaying(resource.data.players)
+        && request.resource.data.players == resource.data.players;
+      allow delete: if amPlaying(resource.data.players);
+
+      // A player's ship layout is readable ONLY by that player — this is what
+      // keeps Battleship honest. The defender's device resolves incoming shots.
+      match /fleets/{studentId} {
+        allow read, write: if isParent() || isStudent(studentId);
+      }
+    }
+
     // ---- sibling kudos: a kid sends AS themselves, the recipient reads ----
     match /kudos/{id} {
       allow read: if isParent() || isStudent(resource.data.to);
