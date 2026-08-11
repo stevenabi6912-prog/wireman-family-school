@@ -94,6 +94,16 @@ export async function completeAssignment(assignment) {
   await updateDoc(doc(db, 'assignments', assignment.id), patch);
 }
 
+// Kid-side "oops, I'm not done" — only for check-off items (nothing typed to
+// restore) that haven't been graded yet. Anything with real work in it goes
+// through Mom, who can also clear the grade.
+export async function undoCompletion(assignmentId) {
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    status: 'in_progress',
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // contentPath may carry a "#page=N" anchor for deep-linking into a PDF.
 export async function resolveContentUrl(contentPath) {
   if (!contentPath) return null;

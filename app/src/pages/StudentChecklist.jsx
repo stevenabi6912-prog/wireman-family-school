@@ -124,6 +124,20 @@ export default function StudentChecklist() {
   }, [combined]);
   const catchUpLeft = combined?.filter((a) => a.catchUp && !DONE_STATUSES.has(a.status)).length ?? 0;
 
+  // The one item a kid may take back themselves: whatever they finished most
+  // recently, within the last 15 minutes (an accidental tap, not a change of heart).
+  const undoableId = useMemo(() => {
+    if (!combined) return null;
+    let best = null;
+    for (const a of combined) {
+      if (!DONE_STATUSES.has(a.status)) continue;
+      const when = a.updatedAt?.toDate?.();
+      if (when && (!best || when > best.when)) best = { id: a.id, when };
+    }
+    if (!best) return null;
+    return Date.now() - best.when.getTime() < 15 * 60 * 1000 ? best.id : null;
+  }, [combined]);
+
   // ---- pacing guide: the family plan starts school at 8:30. Each item gets
   // a target clock time (8:30 + the estimates of everything before it) so the
   // kids always know roughly where they should be in the day. If Abi paused
@@ -357,7 +371,11 @@ export default function StudentChecklist() {
             {cheer && <p className="cheer-line">{cheer}</p>}
           </div>
 
-          {allDone ? (
+          {allDone && parentView && (
+            <p className="parentview-done">🎉 {firstName} finished everything today. Tap any item below to send it back.</p>
+          )}
+
+          {allDone && !parentView ? (
             <div className="day-complete">
               <div className="day-complete-emoji">{theme.avatar}</div>
               <div className="day-complete-burst">🌟🎉🌟</div>
@@ -384,6 +402,8 @@ export default function StudentChecklist() {
                   memoryWork={student?.memoryWork}
                   targetMinutes={targets[i]}
                   grade={student?.grade}
+                  parentView={parentView}
+                  undoable={a.id === undoableId}
                   state={DONE_STATUSES.has(a.status) ? 'done' : i === activeIndex ? 'active' : 'locked'}
                 />
               ))}

@@ -649,3 +649,44 @@
   text-decoration: none;
   white-space: nowrap;
 }
+
+/* Reopen / undo a completed item */
+.reopen-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 14px 10px;
+}
+
+.reopen-btn {
+  border: 2px solid var(--t-accent, #6c5ce7);
+  background: var(--t-card, #fff);
+  color: var(--t-accent, #6c5ce7);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.checklist-large .reopen-btn {
+  font-size: 1.05rem;
+  padding: 8px 18px;
+}
+
+.reopen-btn:disabled { opacity: 0.6; }
+
+.reopen-hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.parentview-done {
+  background: #e3f5e3;
+  border: 1px solid #a8d5a8;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin: 10px 0;
+  font-weight: 700;
+}

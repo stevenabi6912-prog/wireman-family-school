@@ -5,6 +5,9 @@ import {
   where,
   onSnapshot,
   updateDoc,
+  getDoc,
+  getDocs,
+  deleteDoc,
   serverTimestamp,
   deleteField,
 } from 'firebase/firestore';
@@ -48,6 +51,27 @@ export async function rescheduleAssignment(assignmentId, dateISO) {
     // Hand-moved items leave the year-plan grid, so a later vacation
     // reflow won't snap them back to their old slot.
     dayIndex: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// "He clicked done before he was done." Puts an item all the way back to
+// untouched: the status, the work clock, any auto-grade it picked up, and a
+// submitted answer becomes an editable draft again. Parent-only — clearing a
+// grade needs her rights (and isDraft true never re-triggers the grader).
+export async function reopenAssignment(assignmentId) {
+  const graded = await getDocs(query(collection(db, 'grades'), where('assignmentId', '==', assignmentId)));
+  await Promise.all(graded.docs.map((d) => deleteDoc(d.ref)));
+
+  const subRef = doc(db, 'submissions', assignmentId);
+  if ((await getDoc(subRef)).exists()) {
+    await updateDoc(subRef, { isDraft: true, updatedAt: serverTimestamp() });
+  }
+
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    status: 'not_started',
+    startedAt: deleteField(),
+    actualMinutes: deleteField(),
     updatedAt: serverTimestamp(),
   });
 }

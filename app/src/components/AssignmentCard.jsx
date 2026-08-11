@@ -4,7 +4,8 @@ import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
 import { MathSprint } from './KidExtras';
-import { markStarted, completeAssignment, resolveContentUrl } from '../lib/assignments';
+import { markStarted, completeAssignment, resolveContentUrl, undoCompletion } from '../lib/assignments';
+import { reopenAssignment } from '../lib/parentData';
 
 const TYPE_LABELS = {
   reading: '📖 Reading',
@@ -40,9 +41,29 @@ function paceLine(targetMinutes, large) {
   return large ? '🕘 Way behind — power time!' : '🕘 Behind pace — buckle down and you can still catch the day!';
 }
 
-export default function AssignmentCard({ assignment, studentId, state, large, memoryWork, targetMinutes, grade }) {
+export default function AssignmentCard({
+  assignment, studentId, state, large, memoryWork, targetMinutes, grade,
+  parentView, undoable,
+}) {
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
+  const [reopening, setReopening] = useState(false);
+
+  // Abi can always send an item back. A kid can only take back an accidental
+  // tap on a check-off item that hasn't been graded yet.
+  const canParentReopen = parentView && state === 'done';
+  const canKidUndo =
+    !parentView && state === 'done' && undoable &&
+    assignment.status === 'submitted' && CHECKOFF_TYPES.has(assignment.itemType);
+
+  async function reopen() {
+    setReopening(true);
+    try {
+      await reopenAssignment(assignment.id);
+    } finally {
+      setReopening(false);
+    }
+  }
 
   // Start the clock the first time this item becomes the active one.
   useEffect(() => {
@@ -67,6 +88,23 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
           {state === 'done' ? '✅' : state === 'locked' ? '🔒' : `~${assignment.estimatedMinutes} min`}
         </span>
       </div>
+
+      {canParentReopen && (
+        <div className="reopen-row">
+          <button className="reopen-btn" onClick={reopen} disabled={reopening}>
+            {reopening ? 'Reopening…' : '↩️ Let them do this again'}
+          </button>
+          <span className="reopen-hint">Clears the score and the timer — it goes back on their list.</span>
+        </div>
+      )}
+
+      {canKidUndo && (
+        <div className="reopen-row">
+          <button className="reopen-btn" onClick={() => undoCompletion(assignment.id)}>
+            ↩️ Oops — I'm not done yet!
+          </button>
+        </div>
+      )}
 
       {isActive && (
         <div className="assignment-body">
