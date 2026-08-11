@@ -7,6 +7,8 @@
 - Abi: the Day-4 recite screen has a ✏️ on every memory item — paste the shorter Lazarus/Logan verse wording from your Master List into "Text the kids see."
 - Steven: the 753MB `SOTW Volume 2...zip` in Downloads is extracted + uploaded; safe to delete.
 
+- 14 quality-of-life features shipped Aug 10 night (Abi's briefing/sweep/planning tools, streaks, echo recorder, celebration picker, family quest, hours log, email prefs, memory book). Abi: set your first family-quest milestone on the dashboard; scoreboard totals appear after the first nightly report.
+
 ## Done
 - ~~Fresh-slate reset~~ — DONE Aug 10 night: 2,815 assignments pristine, all progress collections wiped, placement screeners restored to days 1–2 (Aug 11/13).
 - ~~Early-start calendar bug~~ — FIXED Aug 10: make-up days before the official start date now count (Abi's Aug 11/13 days work).
