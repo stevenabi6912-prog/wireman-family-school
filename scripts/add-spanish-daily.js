@@ -22,7 +22,7 @@ const DAYS = 150;
 function trackNum(path) {
   // "seesay-cd1-track31-1.mp3" is track 31 (a re-export suffix), so read the
   // number right after "track"/"puente", never the last digits before .mp3.
-  const m = path.match(/track(\d+)/) ?? path.match(/el_puente_(\d+)/);
+  const m = path.match(/track-?(\d+)/) ?? path.match(/el_puente_(\d+)/);
   return Number(m?.[1] ?? 0);
 }
 
