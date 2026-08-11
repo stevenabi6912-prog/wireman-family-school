@@ -68,13 +68,16 @@ function mediaTypeFor(path) {
 async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64, parentNotes }) {
   const client = new Anthropic({ apiKey });
 
-  const content = [
-    {
+  // keyB64 may be null (clean-up items are graded keyless — the question
+  // lives in the assignment's instructions, so there's no PDF to attach).
+  const content = [];
+  if (keyB64) {
+    content.push({
       type: 'document',
       source: { type: 'base64', media_type: 'application/pdf', data: keyB64 },
       title: 'Answer key / teacher guide',
-    },
-  ];
+    });
+  }
 
   // Photos of paper work, if any
   for (const filePath of submission.fileUrls ?? []) {
@@ -98,7 +101,9 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
       'Typed answers from the student:',
       submission.text || '(none — see attached photos of paper work)',
       '',
-      'Use the attached answer key / teacher guide to grade. Be encouraging but accurate,',
+      keyB64
+        ? 'Use the attached answer key / teacher guide to grade. Be encouraging but accurate,'
+        : 'There is no answer key for this item. Grade on whether the student\'s reply correctly answers the question posed in the instructions above. Be encouraging but accurate,',
       'and calibrate expectations to the student\'s grade level.',
       parentNotes ? `\nThe parent has set these grading preferences — follow them:\n${parentNotes}` : '',
       '',
@@ -131,6 +136,143 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
   return JSON.parse(jsonMatch[0]);
 }
 
+// ---------------------------------------------------------------------------
+// Post-grade follow-ups. When a grade lands with a real miss (score below 80%
+// and the grader noted a misunderstanding):
+//   1. Review deck — one kid-friendly multiple-choice question targeting the
+//      misunderstanding, appended to reviewDecks/{studentId} for the kids'
+//      break-time trivia game.
+//   2. Next-day clean-up — a 5-minute practice item scheduled for tomorrow
+//      (deterministic id assignments/{studentId}-cleanup-{tomorrowISO}, so at
+//      most one clean-up per kid per day).
+// ---------------------------------------------------------------------------
+
+// Grade levels for age-appropriate wording, if the student doc lacks one.
+const FOLLOWUP_GRADE_FALLBACK = { luke: 8, layla: 8, logan: 5, lazarus: 3 };
+
+function detroitTomorrowIso() {
+  const d = new Date(isoToday() + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toLocaleDateString('sv-SE'); // YYYY-MM-DD
+}
+
+// One text-only Claude call; returns the concatenated text blocks.
+async function askClaudeShort(prompt) {
+  const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+  const msg = await client.messages.create({
+    model: GRADING_MODEL,
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  return msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+}
+
+// Defensive JSON extraction — returns null instead of throwing.
+function extractJsonBlock(text) {
+  const match = text?.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+async function addReviewCard({ db, student, studentId, assignment, assignmentId, result }) {
+  const grade = student.grade ?? FOLLOWUP_GRADE_FALLBACK[studentId] ?? 5;
+  const text = await askClaudeShort([
+    `A grade ${grade} homeschool student just missed part of a ${assignment.subjectId ?? ''} assignment titled "${assignment.title ?? ''}".`,
+    `The grader noted this misunderstanding: "${result.misunderstandingSummary}"`,
+    '',
+    `Write ONE kid-friendly multiple-choice review question targeting exactly that misunderstanding, age-appropriate for grade ${grade}. It will appear in the kids' break-time trivia game, so keep it fun but on-concept.`,
+    '',
+    'Respond with ONLY a JSON object, no other text, in this exact shape:',
+    '{"question": "<the question>", "choices": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],',
+    ' "answerIndex": <0-3 index of the correct choice>, "explanation": "<one encouraging sentence explaining the right answer>"}',
+  ].join('\n'));
+
+  const card = extractJsonBlock(text);
+  if (
+    !card
+    || typeof card.question !== 'string' || !card.question.trim()
+    || !Array.isArray(card.choices) || card.choices.length !== 4
+    || !Number.isInteger(card.answerIndex) || card.answerIndex < 0 || card.answerIndex > 3
+  ) {
+    console.warn(`review card skipped for ${assignmentId} — unusable model response`);
+    return;
+  }
+
+  // Read-modify-write (arrayUnion can't carry serverTimestamp, and we cap the
+  // deck anyway) — keep only the 25 newest cards.
+  const deckRef = db.doc(`reviewDecks/${studentId}`);
+  const deckSnap = await deckRef.get();
+  const cards = deckSnap.exists && Array.isArray(deckSnap.data().cards) ? deckSnap.data().cards : [];
+  cards.push({
+    question: card.question.trim(),
+    choices: card.choices.map(String),
+    answerIndex: card.answerIndex,
+    explanation: String(card.explanation ?? '').trim(),
+    subjectId: assignment.subjectId ?? null,
+    sourceAssignmentId: assignmentId,
+    createdAt: new Date().toISOString(), // NOT serverTimestamp — inside an array
+  });
+  await deckRef.set({
+    studentId,
+    cards: cards.slice(-25),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+}
+
+async function scheduleCleanupItem({ db, student, studentId, assignment, assignmentId, result }) {
+  if (assignment.cleanupFor) return; // never chain a clean-up off a clean-up
+
+  const tomorrow = detroitTomorrowIso();
+  // Deterministic id doubles as the "already scheduled?" check and enforces
+  // max one clean-up per kid per day (Firestore can't query != on a missing
+  // cleanupFor field).
+  const cleanupRef = db.doc(`assignments/${studentId}-cleanup-${tomorrow}`);
+  if ((await cleanupRef.get()).exists) return;
+
+  const grade = student.grade ?? FOLLOWUP_GRADE_FALLBACK[studentId] ?? 5;
+  const text = await askClaudeShort([
+    `A grade ${grade} homeschool student misunderstood a concept on a ${assignment.subjectId ?? ''} assignment titled "${assignment.title ?? ''}".`,
+    `The grader noted: "${result.misunderstandingSummary}"`,
+    '',
+    `Write ONE short practice question (plain text, about 5 minutes of work, not multiple choice) directly on the misunderstood concept, age-appropriate for grade ${grade}. Also give a 3-6 word label naming the concept.`,
+    '',
+    'Respond with ONLY a JSON object, no other text, in this exact shape:',
+    '{"conceptLabel": "<3-6 word concept label>", "question": "<the practice question, plain text>"}',
+  ].join('\n'));
+
+  const parsed = extractJsonBlock(text);
+  if (!parsed || typeof parsed.question !== 'string' || !parsed.question.trim()) {
+    console.warn(`clean-up skipped for ${assignmentId} — unusable model response`);
+    return;
+  }
+  const label = String(parsed.conceptLabel ?? 'yesterday\'s concept').trim().slice(0, 60);
+
+  // create() (not set) so a concurrent grading run can't double-write.
+  await cleanupRef.create({
+    studentId,
+    scheduledDate: tomorrow,
+    originalDate: tomorrow,
+    sequence: 45,
+    status: 'not_started',
+    waivedReason: null,
+    subjectId: assignment.subjectId ?? null,
+    itemType: 'worksheet',
+    estimatedMinutes: 5,
+    title: `Clean-up: ${label}`,
+    instructions: `${parsed.question.trim()}\n\nType your answer below — this is just to lock it in from yesterday.`,
+    contentPath: null,
+    keyPath: null,
+    externalUrl: null,
+    cleanupFor: assignmentId,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
 async function runGrading(submissionId, submission) {
   const db = admin.firestore();
 
@@ -151,7 +293,9 @@ async function runGrading(submissionId, submission) {
   const parentNotes = notesSnap.exists ? notesSnap.data().notes : null;
 
   // No answer key → route to Abi's manual review queue instead of guessing.
-  if (!assignment.keyPath) {
+  // Exception: clean-up items (cleanupFor set) are deliberately keyless — the
+  // question is in the instructions, so they're auto-graded without a key PDF.
+  if (!assignment.keyPath && !assignment.cleanupFor) {
     await gradeRef.set({
       assignmentId: submission.assignmentId,
       studentId: submission.studentId,
@@ -172,7 +316,7 @@ async function runGrading(submissionId, submission) {
   }
 
   try {
-    const keyB64 = await fetchKeyPdfBase64(assignment.keyPath);
+    const keyB64 = assignment.keyPath ? await fetchKeyPdfBase64(assignment.keyPath) : null;
     const result = await gradeWithClaude({
       apiKey: ANTHROPIC_API_KEY.value(),
       assignment,
@@ -198,6 +342,33 @@ async function runGrading(submissionId, submission) {
       gradedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     await assignmentSnap.ref.update({ status: 'graded' });
+
+    // Post-grade follow-ups on a real miss (below 80% with a noted
+    // misunderstanding). Each is isolated in its own try/catch — a failure
+    // here must never break grading itself.
+    const realMiss = result.score != null && result.maxScore > 0
+      && result.score / result.maxScore < 0.8
+      && (result.misunderstandingSummary ?? '').trim();
+    if (realMiss) {
+      const followUpCtx = {
+        db,
+        student,
+        studentId: submission.studentId,
+        assignment,
+        assignmentId: submission.assignmentId,
+        result,
+      };
+      try {
+        await addReviewCard(followUpCtx);
+      } catch (err) {
+        console.error(`review card failed for ${submission.assignmentId}:`, String(err).slice(0, 200));
+      }
+      try {
+        await scheduleCleanupItem(followUpCtx);
+      } catch (err) {
+        console.error(`clean-up scheduling failed for ${submission.assignmentId}:`, String(err).slice(0, 200));
+      }
+    }
   } catch (err) {
     console.error(`Grading failed for ${submissionId}:`, err);
     await gradeRef.set({
