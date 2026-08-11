@@ -82,7 +82,8 @@ service cloud.firestore {
       allow read: if isParent() ||
         (resource == null ? isSignedIn() : isStudent(resource.data.studentId));
 
-      allow create: if isStudent(request.resource.data.studentId);
+      // Parent create too: Abi can drive a kid's page (peek view) end-to-end.
+      allow create: if isParent() || isStudent(request.resource.data.studentId);
 
       allow update: if isParent() || (
         isStudent(resource.data.studentId) &&

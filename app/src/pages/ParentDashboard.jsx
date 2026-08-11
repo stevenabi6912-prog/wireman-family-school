@@ -9,7 +9,7 @@ import {
   daysOverdue,
   DONE_STATUSES,
 } from '../lib/parentData';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { todayISO } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { projectYear } from '../lib/reflow';
@@ -38,6 +38,7 @@ function greeting() {
 
 export default function ParentDashboard() {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [students, setStudents] = useState(null);
   const [assignments, setAssignments] = useState(null);
   const [year, setYear] = useState(null); // { family, projectedEnd, targetEnd }
@@ -140,7 +141,13 @@ export default function ParentDashboard() {
           const complete = dayList.length > 0 && done === dayList.length;
 
           return (
-            <div key={id} className="student-card" style={{ '--s-header': theme.colors.header, '--s-accent': theme.colors.accent }}>
+            <div
+              key={id}
+              className="student-card student-card-clickable"
+              style={{ '--s-header': theme.colors.header, '--s-accent': theme.colors.accent }}
+              title={`Open ${s.name}'s page`}
+              onClick={() => navigate(`/dashboard/kid/${id}`)}
+            >
               <div className="student-card-top">
                 <span className="student-card-avatar">{theme.avatar}</span>
                 <div>

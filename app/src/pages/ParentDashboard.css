@@ -403,3 +403,14 @@
   border-radius: 999px; padding: 0.45rem 1rem; font-weight: 700; cursor: pointer;
 }
 .memwork-card button:disabled { opacity: 0.45; }
+
+/* Kid cards open that kid's live page */
+.student-card-clickable {
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.student-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}

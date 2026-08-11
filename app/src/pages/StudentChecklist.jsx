@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
@@ -38,7 +39,11 @@ function cheerLine(done, total, large) {
 }
 
 export default function StudentChecklist() {
-  const { studentId, logout } = useAuth();
+  const { studentId: ownStudentId, logout } = useAuth();
+  // Abi peeking: /dashboard/kid/:kidId renders a kid's page under her login.
+  const { kidId } = useParams();
+  const studentId = kidId ?? ownStudentId;
+  const parentView = Boolean(kidId);
   const [student, setStudent] = useState(null);
   const [assignments, setAssignments] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -258,6 +263,12 @@ export default function StudentChecklist() {
 
   return (
     <div className={`checklist-screen ${large ? 'checklist-large' : ''}`} style={styleVars}>
+      {parentView && (
+        <div className="parentview-bar">
+          <Link to="/dashboard">← Back to my dashboard</Link>
+          <span>You're seeing {firstName}'s page exactly as they do — checking things off here is real.</span>
+        </div>
+      )}
       <header
         className={`hero-header ${headerImageUrl ? 'hero-header-image' : ''}`}
         style={headerImageUrl ? { backgroundImage: `url(${headerImageUrl})` } : undefined}

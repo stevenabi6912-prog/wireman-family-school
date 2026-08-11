@@ -36,6 +36,15 @@ export default function App() {
               </RequireRole>
             }
           />
+          {/* Abi peeking at (or driving) a kid's own page — same live view they see */}
+          <Route
+            path="/dashboard/kid/:kidId"
+            element={
+              <RequireRole role="parent">
+                <StudentChecklist />
+              </RequireRole>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

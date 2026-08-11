@@ -216,6 +216,26 @@ describe('reports and mail', () => {
   });
 });
 
+describe('parent drives a kid page', () => {
+  it('the parent can create a submission on a kid\'s behalf', async () => {
+    await assertSucceeds(
+      setDoc(doc(asAbi(), 'submissions/abi-for-luke'), {
+        studentId: 'luke',
+        assignmentId: 'luke-1',
+        isDraft: true,
+      })
+    );
+    // a student still cannot create one for a sibling
+    await assertFails(
+      setDoc(doc(asLayla(), 'submissions/layla-for-luke'), {
+        studentId: 'luke',
+        assignmentId: 'luke-1',
+        isDraft: true,
+      })
+    );
+  });
+});
+
 describe('memory plan', () => {
   it('kids read memory items but cannot write; parent curates', async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
