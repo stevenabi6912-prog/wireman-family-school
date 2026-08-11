@@ -39,6 +39,13 @@ export function minutesUntilBreak(studentId) {
   return Math.max(0, WORK_MINUTES - s.workedMin);
 }
 
+// Surprise-chest prize: the next break is earned right now.
+export function grantBreak(studentId) {
+  const s = load(studentId);
+  s.workedMin = WORK_MINUTES;
+  save(studentId, s);
+}
+
 export function startBreak(studentId) {
   const s = load(studentId);
   s.workedMin = 0;

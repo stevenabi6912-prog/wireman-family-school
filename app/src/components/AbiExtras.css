@@ -1,0 +1,97 @@
+/* Search */
+.search-card {
+  background: #fff;
+  border: 1px solid #e4e2ef;
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+}
+
+.search-row { display: flex; gap: 8px; }
+
+.search-row input {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+}
+
+.search-row button {
+  border: 1px solid #6c5ce7;
+  background: #6c5ce7;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.search-empty { color: #666; margin: 8px 0 0; }
+
+.search-results {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.search-results li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  font-size: 0.92rem;
+  border-top: 1px solid #f2f0fa;
+}
+
+.search-title { flex: 1; }
+.search-meta { color: #777; white-space: nowrap; font-size: 0.82rem; }
+
+/* Report cards */
+.reportcards-section { margin-top: 28px; }
+
+.term-select {
+  margin-left: 12px;
+  font: inherit;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.reportcard {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  page-break-inside: avoid;
+}
+
+.reportcard h3 { margin: 0 0 6px; }
+.reportcard-stats { margin: 0 0 10px; }
+.reportcard-grades { margin-bottom: 10px; }
+
+.reportcard-comments {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px dashed #bbb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+@media print {
+  .reportcard-comments { border: none; resize: none; }
+}
+
+/* Voice-note states in week preview */
+.voice-rec {
+  background: #d9534f !important;
+  color: #fff !important;
+  border-color: #d9534f !important;
+  animation: echo-pulse 1s infinite;
+}
+
+.voice-has { color: #4a8b3a; font-weight: 700; font-size: 0.82rem; }

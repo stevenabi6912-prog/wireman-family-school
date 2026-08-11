@@ -3,7 +3,7 @@ import {
   collection, doc, getDocs, query, where, addDoc, updateDoc,
   serverTimestamp, deleteField,
 } from 'firebase/firestore';
-import { ref, listAll, getMetadata, getDownloadURL } from 'firebase/storage';
+import { ref, listAll, getMetadata, getDownloadURL, uploadBytes } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { todayISO, resolveContentUrl } from '../lib/assignments';
 import { DONE_STATUSES, rescheduleAssignment, waiveAssignment, tomorrowISO } from '../lib/parentData';
@@ -198,6 +198,8 @@ const DETAIL_TYPE_LABELS = {
 
 function ItemDetails({ assignment }) {
   const [opening, setOpening] = useState(false);
+  const [recState, setRecState] = useState(assignment.parentVoicePath ? 'has' : 'idle');
+  const recRef = useState({ current: null })[0];
 
   async function openMaterial() {
     setOpening(true);
@@ -206,6 +208,32 @@ function ItemDetails({ assignment }) {
       window.open(url, '_blank', 'noopener');
     } catch { /* file missing — nothing to open */ }
     setOpening(false);
+  }
+
+  // Voice note: 10 seconds of Mom beats a typed note every time.
+  async function recordVoice() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      const chunks = [];
+      rec.ondataavailable = (e) => chunks.push(e.data);
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecState('saving');
+        const path = `parentnotes/${assignment.id}.webm`;
+        await uploadBytes(ref(storage, path), new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
+        await updateDoc(doc(db, 'assignments', assignment.id), { parentVoicePath: path, updatedAt: serverTimestamp() });
+        setRecState('has');
+      };
+      rec.start();
+      recRef.current = rec;
+      setRecState('recording');
+    } catch { setRecState(assignment.parentVoicePath ? 'has' : 'idle'); }
+  }
+
+  async function removeVoice() {
+    await updateDoc(doc(db, 'assignments', assignment.id), { parentVoicePath: deleteField(), updatedAt: serverTimestamp() });
+    setRecState('idle');
   }
 
   return (
@@ -223,6 +251,16 @@ function ItemDetails({ assignment }) {
         )}
         {assignment.externalUrl && (
           <a href={assignment.externalUrl} target="_blank" rel="noreferrer">🔗 Open the site</a>
+        )}
+        {recState === 'idle' && <button onClick={recordVoice}>🎤 Record a note</button>}
+        {recState === 'recording' && <button className="voice-rec" onClick={() => recRef.current?.stop()}>⏹ Stop</button>}
+        {recState === 'saving' && <button disabled>Saving…</button>}
+        {recState === 'has' && (
+          <>
+            <span className="voice-has">🎤 Voice note on ✓</span>
+            <button onClick={recordVoice}>re-record</button>
+            <button onClick={removeVoice}>remove</button>
+          </>
         )}
       </span>
     </div>

@@ -90,10 +90,22 @@ export function FamilyQuest({ editable }) {
   const [family, setFamily] = useState(null);
   const [target, setTarget] = useState('');
   const [reward, setReward] = useState('');
+  const [teachWho, setTeachWho] = useState('');
 
   useEffect(() => onSnapshot(doc(db, 'families', 'wireman'), (s) => setFamily(s.data())), []);
 
-  const total = family?.scoreboard?.totalDone ?? 0;
+  // family total = everyone's finished items + tutor-credit bonus points
+  const total = (family?.scoreboard?.totalDone ?? 0) + (family?.bonusPoints ?? 0);
+
+  const KIDS = { luke: 'Luke', layla: 'Layla', logan: 'Logan', lazarus: 'Lazarus' };
+  async function logTeach() {
+    if (!teachWho) return;
+    await updateDoc(doc(db, 'families', 'wireman'), {
+      bonusPoints: (family?.bonusPoints ?? 0) + 2,
+      tutorLog: [...(family?.tutorLog ?? []), { helper: teachWho, date: todayISO() }].slice(-50),
+    });
+    setTeachWho('');
+  }
   const milestones = [...(family?.milestones ?? [])].sort((a, b) => a.target - b.target);
   const next = milestones.find((m) => m.target > total);
 
@@ -128,6 +140,17 @@ export function FamilyQuest({ editable }) {
         </div>
       ) : (
         editable && <p className="quest-next">No milestone ahead — add one below!</p>
+      )}
+      {editable && (
+        <div className="quest-teach">
+          <span>🤝 Sibling taught something? It's worth double:</span>
+          <select value={teachWho} onChange={(e) => setTeachWho(e.target.value)}>
+            <option value="">who taught?</option>
+            {Object.entries(KIDS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}
+          </select>
+          <button onClick={logTeach} disabled={!teachWho}>+2 points</button>
+          {(family?.bonusPoints ?? 0) > 0 && <em>{family.bonusPoints} tutor points so far</em>}
+        </div>
       )}
       {editable && (
         <div className="quest-edit">

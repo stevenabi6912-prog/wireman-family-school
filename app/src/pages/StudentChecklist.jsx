@@ -17,6 +17,7 @@ import ExplorerClub from '../components/ExplorerClub';
 import BugReport from '../components/BugReport';
 import MemoryBlock from '../components/MemoryBlock';
 import { FamilyQuest } from '../components/MorningBriefing';
+import { VerseOfDay, SurpriseChest, KudosSend, KudosInbox, PersonalRecords, buddyStage } from '../components/KidExtras';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
 import { fetchStreakStats } from '../lib/streaks';
 import './StudentChecklist.css';
@@ -300,8 +301,20 @@ export default function StudentChecklist() {
         </div>
       </header>
 
-      {streakStats && (streakStats.streak > 0 || streakStats.badges.length > 0) && (
+      <VerseOfDay large={large} />
+
+      <KudosInbox studentId={studentId} />
+
+      {streakStats && (
         <div className="streak-strip">
+          {(() => {
+            const stage = buddyStage(streakStats.totalDone);
+            return (
+              <span className="streak-badge streak-buddy" title={stage.next ? `Grows again at ${stage.next.at} items!` : 'Fully grown!'}>
+                {stage.emoji} {stage.name}{stage.next && ` · next: ${stage.next.emoji} at ${stage.next.at}`}
+              </span>
+            );
+          })()}
           {streakStats.streak > 0 && (
             <span className="streak-flame">🔥 {streakStats.streak}-day streak{large ? '!' : ''}</span>
           )}
@@ -350,6 +363,8 @@ export default function StudentChecklist() {
               <div className="day-complete-burst">🌟🎉🌟</div>
               <h2>{large ? 'ALL DONE! You rock!' : `That's everything — great work today, ${firstName}!`}</h2>
               <p>School's out. Go tell Mom!</p>
+              <SurpriseChest studentId={studentId} large={large} />
+              <KudosSend studentId={studentId} large={large} />
               <BonusRound
                 candidates={bonusCandidates}
                 doneToday={bonusDoneToday}
@@ -368,6 +383,7 @@ export default function StudentChecklist() {
                   large={large}
                   memoryWork={student?.memoryWork}
                   targetMinutes={targets[i]}
+                  grade={student?.grade}
                   state={DONE_STATUSES.has(a.status) ? 'done' : i === activeIndex ? 'active' : 'locked'}
                 />
               ))}
@@ -381,6 +397,8 @@ export default function StudentChecklist() {
       <WeeklyReport studentId={studentId} justFinished={allDone} />
 
       <FamilyQuest />
+
+      <PersonalRecords stats={streakStats} large={large} />
 
       <YearTrail studentId={studentId} avatar={theme.avatar} />
 

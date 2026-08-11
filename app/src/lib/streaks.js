@@ -32,11 +32,14 @@ export async function fetchStreakStats(studentId, todayIso) {
   let totalDone = 0;
   snap.forEach((d) => {
     const a = d.data();
-    const day = (byDate[a.scheduledDate] ??= { total: 0, done: 0 });
+    const day = (byDate[a.scheduledDate] ??= { total: 0, done: 0, minutes: 0, lastFinish: null });
     day.total++;
     if (DONE.has(a.status)) {
       day.done++;
       totalDone++;
+      day.minutes += a.actualMinutes ?? 0;
+      const when = a.updatedAt?.toDate?.();
+      if (when && (!day.lastFinish || when > day.lastFinish)) day.lastFinish = when;
     }
   });
 
@@ -63,6 +66,25 @@ export async function fetchStreakStats(studentId, todayIso) {
     }
   }
 
-  const stats = { streak, bestStreak, totalDone };
+  // Personal records over fully-completed days: fastest total time and
+  // earliest time-of-day the last item got finished.
+  let fastestDayMinutes = null;
+  let earliestFinish = null;
+  for (const date of dates) {
+    const day = byDate[date];
+    if (day.done !== day.total || day.total === 0) continue;
+    if (day.minutes > 0 && (fastestDayMinutes === null || day.minutes < fastestDayMinutes)) {
+      fastestDayMinutes = day.minutes;
+    }
+    if (day.lastFinish) {
+      const mins = day.lastFinish.getHours() * 60 + day.lastFinish.getMinutes();
+      if (earliestFinish === null || mins < earliestFinish) earliestFinish = mins;
+    }
+  }
+  const earliestLabel = earliestFinish === null
+    ? null
+    : `${((Math.floor(earliestFinish / 60) + 11) % 12) + 1}:${String(earliestFinish % 60).padStart(2, '0')}`;
+
+  const stats = { streak, bestStreak, totalDone, fastestDayMinutes, earliestFinish: earliestLabel };
   return { ...stats, badges: BADGES.filter((b) => b.at(stats)) };
 }

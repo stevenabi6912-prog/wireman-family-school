@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { BREAK_SECONDS, loadGame, saveGame } from '../lib/breaks';
 import { makeSudoku, makeWordSearch, WORD_THEMES, SCRAMBLES, TRIVIA, TYPING_WORDS } from './breakGames';
 import { playDing, playFanfare } from '../lib/sounds';
@@ -323,7 +325,21 @@ function Trivia({ studentId }) {
   const [i, setI] = useState(saved?.seedDay === daySeed() ? saved.i ?? 0 : 0);
   const [score, setScore] = useState(saved?.seedDay === daySeed() ? saved.score ?? 0 : 0);
   const [picked, setPicked] = useState(null);
-  const q = TRIVIA[(daySeed() + i) % TRIVIA.length];
+  const [deck, setDeck] = useState([]);
+
+  // Their own missed-question review cards (grading writes reviewDecks/{kid})
+  // lead the rotation, so break time quietly re-teaches last week's misses.
+  useEffect(() => {
+    getDoc(doc(db, 'reviewDecks', studentId))
+      .then((s) => {
+        const cards = s.data()?.cards ?? [];
+        setDeck(cards.map((c) => ({ q: c.question, a: c.choices, c: c.answerIndex, why: c.explanation, review: true })));
+      })
+      .catch(() => {});
+  }, [studentId]);
+
+  const pool = deck.length ? [...deck, ...TRIVIA] : TRIVIA;
+  const q = pool[(daySeed() + i) % pool.length];
 
   function pick(idx) {
     if (picked !== null) return;
@@ -341,7 +357,7 @@ function Trivia({ studentId }) {
   return (
     <div className="game-box">
       <p className="game-hint">🏰 {score} right so far</p>
-      <h3 className="trivia-q">{q.q}</h3>
+      <h3 className="trivia-q">{q.review && <span className="trivia-review-tag">📚 from your work! </span>}{q.q}</h3>
       <div className="trivia-answers">
         {q.a.map((ans, idx) => (
           <button
@@ -353,6 +369,7 @@ function Trivia({ studentId }) {
           </button>
         ))}
       </div>
+      {picked !== null && q.why && <p className="trivia-why">{q.why}</p>}
     </div>
   );
 }

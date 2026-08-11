@@ -132,6 +132,24 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- review decks: grading function writes; each kid reads their own ----
+    match /reviewDecks/{studentId} {
+      allow read: if isParent() || isStudent(studentId);
+      allow write: if false;
+    }
+
+    // ---- sibling kudos: a kid sends AS themselves, the recipient reads ----
+    match /kudos/{id} {
+      allow read: if isParent() || isStudent(resource.data.to);
+      allow create: if isParent() || isStudent(request.resource.data.from);
+      allow update, delete: if isParent();
+    }
+
+    // ---- report cards: Abi's quarterly write-ups, hers alone ----
+    match /reportCards/{id} {
+      allow read, write: if isParent();
+    }
+
     // ---- bug reports: any family member can file one (kids included);
     //      only the parent reads them; nobody edits after filing. ----
     match /bugReports/{id} {

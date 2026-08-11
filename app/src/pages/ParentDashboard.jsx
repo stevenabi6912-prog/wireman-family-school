@@ -21,6 +21,7 @@ import MemoryWork from '../components/MemoryWork';
 import RecitePanel from '../components/RecitePanel';
 import MorningBriefing, { FamilyQuest, EmailPrefs } from '../components/MorningBriefing';
 import { SweepPanel, WeekPreview, QuickAdd, EchoShelf } from '../components/PlanningTools';
+import { SearchBox } from '../components/AbiExtras';
 import SchoolCalendar from '../components/SchoolCalendar';
 import BugReport from '../components/BugReport';
 import AbiTheme from '../components/AbiTheme';
@@ -127,6 +128,8 @@ export default function ParentDashboard() {
       </header>
 
       <MorningBriefing students={students} byStudent={byStudent} order={STUDENT_ORDER} reviewCount={reviewQueue.length} />
+
+      <SearchBox students={students} grades={grades} />
 
       <section className="student-grid">
         {STUDENT_ORDER.map((id) => {

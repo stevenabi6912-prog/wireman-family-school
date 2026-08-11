@@ -252,6 +252,32 @@ describe('memory plan', () => {
   });
 });
 
+describe('batch-2 collections', () => {
+  it('review decks: kid reads own, cannot write; sibling blocked', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'reviewDecks/luke'), { cards: [] });
+    });
+    await assertSucceeds(getDoc(doc(asLuke(), 'reviewDecks/luke')));
+    await assertFails(getDoc(doc(asLayla(), 'reviewDecks/luke')));
+    await assertFails(updateDoc(doc(asLuke(), 'reviewDecks/luke'), { cards: [1] }));
+  });
+
+  it('kudos: kid sends as self only; recipient reads', async () => {
+    await assertSucceeds(setDoc(doc(asLuke(), 'kudos/k1'), { from: 'luke', to: 'logan', sticker: '🔥', date: '2026-08-11' }));
+    await assertFails(setDoc(doc(asLuke(), 'kudos/k2'), { from: 'layla', to: 'logan', sticker: '🔥', date: '2026-08-11' }));
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'kudos/k3'), { from: 'luke', to: 'logan', sticker: '⭐', date: '2026-08-11' });
+    });
+    await assertSucceeds(getDoc(doc(testEnv.authenticatedContext('logan-uid', { role: 'student', studentId: 'logan' }).firestore(), 'kudos/k3')));
+    await assertFails(getDoc(doc(asLayla(), 'kudos/k3')));
+  });
+
+  it('report cards are parent-only', async () => {
+    await assertSucceeds(setDoc(doc(asAbi(), 'reportCards/luke-q1'), { comments: 'Great start' }));
+    await assertFails(getDoc(doc(asLuke(), 'reportCards/luke-q1')));
+  });
+});
+
 describe('bugReports', () => {
   it('a kid can file a bug report as themselves, cannot spoof or edit', async () => {
     await assertSucceeds(

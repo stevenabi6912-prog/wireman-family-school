@@ -3,6 +3,7 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
+import { MathSprint } from './KidExtras';
 import { markStarted, completeAssignment, resolveContentUrl } from '../lib/assignments';
 
 const TYPE_LABELS = {
@@ -39,7 +40,7 @@ function paceLine(targetMinutes, large) {
   return large ? '🕘 Way behind — power time!' : '🕘 Behind pace — buckle down and you can still catch the day!';
 }
 
-export default function AssignmentCard({ assignment, studentId, state, large, memoryWork, targetMinutes }) {
+export default function AssignmentCard({ assignment, studentId, state, large, memoryWork, targetMinutes, grade }) {
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
 
@@ -74,6 +75,11 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
           )}
           {assignment.parentNote && (
             <p className="parent-note">📌 From Mom: {assignment.parentNote}</p>
+          )}
+          {assignment.parentVoicePath && <MomSays path={assignment.parentVoicePath} />}
+
+          {assignment.subjectId === 'math' && assignment.itemType === 'video' && (
+            <MathSprint studentId={studentId} grade={grade ?? 8} large={large} />
           )}
           {assignment.instructions && (
             <p className="assignment-instructions">
@@ -304,4 +310,14 @@ function ChapterAudio({ assignment }) {
 function ChapterAudioPlayer({ url, path }) {
   const bookmark = useAudioBookmark(path);
   return <audio className="chapter-audio" controls autoPlay src={url} {...bookmark} />;
+}
+
+// Abi's recorded voice note on this assignment.
+function MomSays({ path }) {
+  const [url, setUrl] = useState(null);
+  async function load() {
+    try { setUrl(await resolveContentUrl(path)); } catch { /* note missing */ }
+  }
+  if (url) return <audio className="chapter-audio" controls autoPlay src={url} />;
+  return <button className="video-link" onClick={load}>▶ Mom says…</button>;
 }

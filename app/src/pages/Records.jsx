@@ -4,6 +4,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { watchAllGrades, watchStudents } from './recordsData';
 import { gradePct, computeAverages, gradesToCSV } from '../lib/grades';
+import { ReportCards, AffidavitButton } from '../components/AbiExtras';
 import './Records.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -160,6 +161,7 @@ export default function Records() {
           <button className="records-csv no-print" onClick={downloadHoursCSV} style={{ marginLeft: 12 }}>
             ⬇ CSV
           </button>
+          <AffidavitButton students={students} hoursLog={hoursLog} />
         </h2>
         {Object.keys(hoursLog).length === 0 ? (
           <p className="records-none">Fills in automatically as work gets finished.</p>
@@ -189,6 +191,8 @@ export default function Records() {
           </table>
         )}
       </section>
+
+      <ReportCards students={students} grades={grades} allAssignments={allAssignments} subjectNames={SUBJECT_NAMES} />
 
       <section className="transcript-section">
         <h2>8th Grade Transcript — 2026–27</h2>

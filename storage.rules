@@ -39,6 +39,12 @@ service firebase.storage {
       allow write: if isParent() || isOwnStudent(studentId);
     }
 
+    // Abi's recorded voice notes on assignments: kids listen, only she records.
+    match /parentnotes/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isParent();
+    }
+
     // Theme header pictures (cosmetic, kid-chosen): any family member can view
     // them (they render on dashboard cards too); only that student or the
     // parent can upload/replace. Images only, max 10 MB.
