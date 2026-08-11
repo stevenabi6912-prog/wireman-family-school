@@ -83,7 +83,9 @@ async function uploadAll() {
 // ---- builders ----
 const bible = (mins) => ({
   subjectId: 'bible', itemType: 'bible', estimatedMinutes: mins,
-  title: "Answers in Genesis — today's lesson",
+  // Bible = The Names of God (Abi's 36-week track). scripts/switch-bible-names-of-god.js
+  // rewrites each day's title to its week's Name after generation.
+  title: "Names of God — today's lesson",
   instructions: "Do today's Bible lesson from your book, then check it off.",
 });
 
