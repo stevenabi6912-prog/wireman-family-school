@@ -207,7 +207,7 @@ export default function Records() {
                   ['English 8 — Composition', 'IEW U.S. History-Based Writing', 'writing'],
                   ['Medieval History', 'Story of the World Vol. 2', 'history'],
                   ['Earth Science', 'Elemental Science (Logic Stage)', 'science'],
-                  ['Bible', 'Answers in Genesis', 'bible'],
+                  ['Bible', 'The Names of God (family study)', 'bible'],
                   ['Spanish 1', 'Flip Flop Spanish — Sí Sí Level 1', 'spanish'],
                 ].map(([course, curric, subj]) => (
                   <tr key={course}>

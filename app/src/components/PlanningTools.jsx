@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import { ref, listAll, getMetadata, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
-import { todayISO } from '../lib/assignments';
+import { todayISO, resolveContentUrl } from '../lib/assignments';
 import { DONE_STATUSES, rescheduleAssignment, waiveAssignment, tomorrowISO } from '../lib/parentData';
 import { resolveTheme } from '../config/themes';
 import './PlanningTools.css';
@@ -98,6 +98,7 @@ export function WeekPreview({ students }) {
   const [items, setItems] = useState(null);
   const [open, setOpen] = useState(false);
   const [bump, setBump] = useState(0);
+  const [expanded, setExpanded] = useState(null); // assignment id whose details are open
 
   useEffect(() => {
     if (!open) return;
@@ -133,16 +134,23 @@ export function WeekPreview({ students }) {
                 <h4>{new Date(date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h4>
                 <ul>
                   {byDate[date].map((a) => (
-                    <li key={a.id}>
-                      <span className="weekprev-item">
-                        {resolveTheme(a.studentId, students[a.studentId]?.theme).avatar} {a.title}
-                        {a.parentNote && ' 📌'}
-                      </span>
-                      <span className="weekprev-actions">
-                        <button title="A day earlier" onClick={() => shift(a, -1)}>◀</button>
-                        <button title="A day later" onClick={() => shift(a, 1)}>▶</button>
-                        <button className="note-btn" title="Note for the kid" onClick={() => editNote(a).then((ok) => ok && setBump((b) => b + 1))}>📌</button>
-                      </span>
+                    <li key={a.id} className={expanded === a.id ? 'weekprev-li-open' : ''}>
+                      <div className="weekprev-row">
+                        <button
+                          className="weekprev-item"
+                          title="See what this item asks for"
+                          onClick={() => setExpanded(expanded === a.id ? null : a.id)}
+                        >
+                          {resolveTheme(a.studentId, students[a.studentId]?.theme).avatar} {a.title}
+                          {a.parentNote && ' 📌'}
+                        </button>
+                        <span className="weekprev-actions">
+                          <button title="A day earlier" onClick={() => shift(a, -1)}>◀</button>
+                          <button title="A day later" onClick={() => shift(a, 1)}>▶</button>
+                          <button className="note-btn" title="Note for the kid" onClick={() => editNote(a).then((ok) => ok && setBump((b) => b + 1))}>📌</button>
+                        </span>
+                      </div>
+                      {expanded === a.id && <ItemDetails assignment={a} />}
                     </li>
                   ))}
                 </ul>
@@ -153,6 +161,47 @@ export function WeekPreview({ students }) {
         )
       )}
     </section>
+  );
+}
+
+// Expanded view of one upcoming item: what the kid will be asked to do,
+// how long it should take, and a button to open the actual material.
+const DETAIL_TYPE_LABELS = {
+  reading: '📖 Reading', worksheet: '✏️ Worksheet', test: '📝 Test',
+  memorization: '🗣️ Memorize & recite', bible: '🙏 Bible', project: '🎨 Project',
+  video: '🎬 Video lesson', audio: '🎧 Listen & speak', task: '⭐ From Mom',
+};
+
+function ItemDetails({ assignment }) {
+  const [opening, setOpening] = useState(false);
+
+  async function openMaterial() {
+    setOpening(true);
+    try {
+      const url = await resolveContentUrl(assignment.contentPath);
+      window.open(url, '_blank', 'noopener');
+    } catch { /* file missing — nothing to open */ }
+    setOpening(false);
+  }
+
+  return (
+    <div className="weekprev-details">
+      <p className="weekprev-meta">
+        {DETAIL_TYPE_LABELS[assignment.itemType] ?? assignment.itemType} · ~{assignment.estimatedMinutes} min
+      </p>
+      {assignment.instructions && <p className="weekprev-instructions">{assignment.instructions}</p>}
+      {assignment.parentNote && <p className="weekprev-note">📌 Your note: {assignment.parentNote}</p>}
+      <span className="weekprev-links">
+        {assignment.contentPath && (
+          <button onClick={openMaterial} disabled={opening}>
+            {opening ? 'Opening…' : assignment.contentPath.endsWith('.mp3') ? '🎧 Open the audio' : '📄 Open the pages'}
+          </button>
+        )}
+        {assignment.externalUrl && (
+          <a href={assignment.externalUrl} target="_blank" rel="noreferrer">🔗 Open the site</a>
+        )}
+      </span>
+    </div>
   );
 }
 

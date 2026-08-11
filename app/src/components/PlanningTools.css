@@ -216,3 +216,77 @@
   cursor: pointer;
   font-size: 0.88rem;
 }
+
+/* Expandable item details in the week preview */
+.weekprev-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.weekprev-item {
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekprev-item:hover {
+  color: #6c5ce7;
+}
+
+.weekprev-li-open {
+  flex-direction: column;
+  align-items: stretch !important;
+  background: #f8f7fc;
+  border-radius: 8px;
+  padding: 6px 8px !important;
+}
+
+.weekprev-details {
+  padding: 6px 4px 2px;
+  font-size: 0.85rem;
+}
+
+.weekprev-meta {
+  margin: 0 0 4px;
+  color: #777;
+  font-weight: 600;
+}
+
+.weekprev-instructions {
+  margin: 0 0 6px;
+  color: #333;
+}
+
+.weekprev-note {
+  margin: 0 0 6px;
+  color: #6b5b1e;
+  font-weight: 600;
+}
+
+.weekprev-links {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.weekprev-links button,
+.weekprev-links a {
+  border: 1px solid #6c5ce7;
+  background: #fff;
+  color: #6c5ce7;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
