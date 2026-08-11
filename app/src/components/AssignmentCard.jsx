@@ -11,11 +11,12 @@ const TYPE_LABELS = {
   bible: '🙏 Bible',
   project: '🎨 Project',
   video: '🎬 Video lesson',
+  audio: '🎧 Listen & speak',
 };
 
 // Checkoff-only types have no typed submission: Bible and memorization are done
-// with a parent in person; reading and video just need a "done" tap.
-const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video']);
+// with a parent in person; reading, video, and audio just need a "done" tap.
+const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video', 'audio']);
 
 export default function AssignmentCard({ assignment, studentId, state, large, memoryWork }) {
   // state: 'locked' | 'active' | 'done'
@@ -83,7 +84,11 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
             </div>
           )}
 
-          {assignment.contentPath && <PdfViewer contentPath={assignment.contentPath} />}
+          {assignment.contentPath && (
+            assignment.contentPath.endsWith('.mp3')
+              ? <LessonAudio path={assignment.contentPath} large={large} />
+              : <PdfViewer contentPath={assignment.contentPath} />
+          )}
 
           {CHECKOFF_TYPES.has(assignment.itemType) ? (
             <button className="submit-btn" onClick={markDone}>
@@ -91,7 +96,9 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
                 ? 'I recited it to Mom ✓'
                 : assignment.itemType === 'bible'
                   ? 'We finished our Bible lesson ✓'
-                  : 'I finished it ✓'}
+                  : assignment.itemType === 'audio'
+                    ? 'I said it all out loud ✓'
+                    : 'I finished it ✓'}
             </button>
           ) : (
             <SubmissionForm
@@ -104,6 +111,30 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
         </div>
       )}
     </div>
+  );
+}
+
+// Audio-lesson content (e.g. daily Flip Flop Spanish): a play button that
+// resolves the private Storage track and streams it in place.
+function LessonAudio({ path, large }) {
+  const [url, setUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      setUrl(await resolveContentUrl(path));
+    } catch {
+      setUrl(null);
+    }
+    setLoading(false);
+  }
+
+  if (url) return <audio className="chapter-audio" controls autoPlay src={url} />;
+  return (
+    <button className="video-link" onClick={load} disabled={loading}>
+      {loading ? 'Loading…' : large ? '▶ Play my Spanish!' : '▶ Play today\'s lesson'}
+    </button>
   );
 }
 
