@@ -253,6 +253,22 @@ function isoToday(tz = 'America/Detroit') {
   return new Date().toLocaleDateString('sv-SE', { timeZone: tz }); // YYYY-MM-DD
 }
 
+const FAMILY_DOC = 'families/wireman';
+
+// The parent dashboard writes families/wireman.emailPrefs =
+// { nightly, fridayWins, sundayPacket, kidReports } (booleans). A missing
+// field — or a missing doc, or a read error — means TRUE: only an explicit
+// false silences a scheduled email. Manual runNow callables never check this.
+async function emailPrefEnabled(key) {
+  try {
+    const snap = await admin.firestore().doc(FAMILY_DOC).get();
+    return snap.data()?.emailPrefs?.[key] !== false;
+  } catch (err) {
+    console.error(`emailPrefs read failed for '${key}' — sending anyway:`, String(err).slice(0, 160));
+    return true;
+  }
+}
+
 async function buildNightlyReport() {
   const db = admin.firestore();
   const today = isoToday();
@@ -356,12 +372,36 @@ async function buildNightlyReport() {
     html,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  // Family scoreboard: all-time completed counts, merged onto the family doc
+  // for the dashboard. Best-effort — a failure here never sinks the report.
+  try {
+    const doneSnap = await db.collection('assignments').where('status', 'in', [...DONE]).get();
+    const byKid = Object.fromEntries(STUDENT_ORDER.map((id) => [id, 0]));
+    doneSnap.docs.forEach((d) => {
+      const sid = d.data().studentId;
+      if (byKid[sid] != null) byKid[sid]++;
+    });
+    await db.doc(FAMILY_DOC).set({
+      scoreboard: {
+        totalDone: doneSnap.size,
+        byKid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+    }, { merge: true });
+  } catch (err) {
+    console.error('scoreboard update failed (report already queued):', String(err).slice(0, 200));
+  }
   return today;
 }
 
 export const nightlyReport = onSchedule(
   { schedule: '30 17 * * 1-4', timeZone: 'America/Detroit' },
   async () => {
+    if (!(await emailPrefEnabled('nightly'))) {
+      console.log("nightlyReport skipped — emailPrefs.nightly is off");
+      return;
+    }
     await buildNightlyReport();
   }
 );
@@ -642,6 +682,10 @@ Reply with ONLY JSON: {"headline": "<one fun sentence>", "wins": ["<2-3 specific
 export const weeklyKidReports = onSchedule(
   { schedule: '0 18 * * 4', timeZone: 'America/Detroit', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300 },
   async () => {
+    if (!(await emailPrefEnabled('kidReports'))) {
+      console.log("weeklyKidReports skipped — emailPrefs.kidReports is off");
+      return;
+    }
     await buildKidReports();
   }
 );
@@ -696,6 +740,10 @@ export const runKidReportsNow = onCall({ invoker: 'public', secrets: [ANTHROPIC_
 export const fridayWins = onSchedule(
   { schedule: '0 17 * * 5', timeZone: 'America/Detroit' },
   async () => {
+    if (!(await emailPrefEnabled('fridayWins'))) {
+      console.log("fridayWins skipped — emailPrefs.fridayWins is off");
+      return;
+    }
     const db = admin.firestore();
     const today = isoToday();
     const weekAgo = new Date(today + 'T12:00:00');
@@ -851,6 +899,10 @@ async function buildSundayPacket() {
 export const sundayPacket = onSchedule(
   { schedule: '0 7 * * 0', timeZone: 'America/Detroit', memory: '1GiB', timeoutSeconds: 300 },
   async () => {
+    if (!(await emailPrefEnabled('sundayPacket'))) {
+      console.log("sundayPacket skipped — emailPrefs.sundayPacket is off");
+      return;
+    }
     await buildSundayPacket();
   }
 );
@@ -898,6 +950,158 @@ export const gradingTuneUp = onSchedule(
         });
       }
     }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Memory Book: the end-of-year "Year in Review" email — for each kid, what
+// they finished, hours put in, per-subject counts and grade averages, and the
+// recitations they mastered by heart. Mastery uses the same derived rule as
+// the app (app/src/lib/memory.js): two 'pass' attempts at least 14 days apart.
+// ---------------------------------------------------------------------------
+
+const MEMORY_KID_STYLE = {
+  luke: { color: '#0076B6', emoji: '🦁' },
+  layla: { color: '#12939b', emoji: '🐬' },
+  logan: { color: '#4a6b3a', emoji: '🎣' },
+  lazarus: { color: '#1f9e46', emoji: '🎯' },
+};
+
+async function buildMemoryBook() {
+  const db = admin.firestore();
+  const [assignSnap, gradeSnap, studentSnap, attemptSnap, memSnap] = await Promise.all([
+    db.collection('assignments').get(),
+    db.collection('grades').get(),
+    db.collection('students').get(),
+    db.collection('memoryAttempts').get(),
+    db.collection('memoryItems').get(),
+  ]);
+  const students = {};
+  studentSnap.docs.forEach((d) => { students[d.id] = d.data(); });
+  const memTitles = {};
+  memSnap.docs.forEach((d) => { memTitles[d.id] = d.data().title ?? d.id; });
+
+  // Mastered = two 'pass' recitations at least 14 days apart, per item per kid.
+  const passDates = {}; // itemId -> { studentId -> [date, ...] }
+  attemptSnap.docs.forEach((d) => {
+    const a = d.data();
+    if (a.result !== 'pass' || !a.itemId || !a.studentId || !a.date) return;
+    ((passDates[a.itemId] = passDates[a.itemId] ?? {})[a.studentId] =
+      passDates[a.itemId][a.studentId] ?? []).push(a.date);
+  });
+  const masteredByKid = Object.fromEntries(STUDENT_ORDER.map((id) => [id, []]));
+  for (const [itemId, byStudent] of Object.entries(passDates)) {
+    for (const [sid, dates] of Object.entries(byStudent)) {
+      if (!masteredByKid[sid]) continue;
+      dates.sort();
+      const spanDays = (new Date(dates[dates.length - 1]) - new Date(dates[0])) / 86400000;
+      if (dates.length >= 2 && spanDays >= 14) masteredByKid[sid].push(memTitles[itemId] ?? itemId);
+    }
+  }
+
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const subjectLabel = (s) => (s ? s[0].toUpperCase() + s.slice(1) : 'Other');
+
+  let familyDone = 0;
+  let familyMinutes = 0;
+  let familyMastered = 0;
+  const textLines = ['Wireman Family School — Year in Review 2026–27', ''];
+
+  const sections = STUDENT_ORDER.map((kid) => {
+    const s = students[kid] ?? {};
+    const k = MEMORY_KID_STYLE[kid];
+    const av = s.theme?.avatar ?? k.emoji;
+    const name = s.name ?? KID_NAMES[kid];
+
+    const doneItems = assignSnap.docs.map((d) => d.data()).filter((a) => a.studentId === kid && DONE.has(a.status));
+    const minutes = doneItems.reduce((sum, a) => sum + (a.actualMinutes ?? a.estimatedMinutes ?? 0), 0);
+    const hours = (minutes / 60).toFixed(1);
+    const bySubject = {};
+    doneItems.forEach((a) => {
+      const sub = a.subjectId ?? 'other';
+      bySubject[sub] = (bySubject[sub] ?? 0) + 1;
+    });
+
+    // Grade averages per subject: avg of score/maxScore as a percent.
+    // Subjects with no scored grades simply show no average.
+    const gradeFractions = {};
+    gradeSnap.docs.forEach((d) => {
+      const g = d.data();
+      if (g.studentId !== kid) return;
+      const score = g.overriddenScore ?? g.score;
+      if (score == null || !g.maxScore) return;
+      const sub = g.subjectId ?? 'other';
+      (gradeFractions[sub] = gradeFractions[sub] ?? []).push(score / g.maxScore);
+    });
+    const avgBySubject = {};
+    for (const [sub, arr] of Object.entries(gradeFractions)) {
+      avgBySubject[sub] = Math.round((arr.reduce((x, y) => x + y, 0) / arr.length) * 100);
+    }
+
+    const mastered = masteredByKid[kid];
+    familyDone += doneItems.length;
+    familyMinutes += minutes;
+    familyMastered += mastered.length;
+
+    textLines.push(`${name}: ${doneItems.length} items, ${hours} hours, ${mastered.length} pieces mastered by heart`);
+
+    const subjects = [...new Set([...Object.keys(bySubject), ...Object.keys(avgBySubject)])]
+      .sort((a, b) => (bySubject[b] ?? 0) - (bySubject[a] ?? 0));
+    const subjectRows = subjects.map((sub) => `
+        <tr>
+          <td style="padding:5px 10px 5px 0;font-size:14px;color:#333;border-bottom:1px solid #f0ede8;">${esc(subjectLabel(sub))}</td>
+          <td style="padding:5px 10px;font-size:14px;color:#333;text-align:right;border-bottom:1px solid #f0ede8;">${bySubject[sub] ?? 0} done</td>
+          <td style="padding:5px 0;font-size:14px;text-align:right;border-bottom:1px solid #f0ede8;color:${avgBySubject[sub] != null ? '#3b6ea8' : '#bbb'};">${avgBySubject[sub] != null ? `${avgBySubject[sub]}%` : '—'}</td>
+        </tr>`).join('');
+
+    return `
+    <div style="background:#ffffff;border-radius:14px;border-top:5px solid ${k.color};box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:14px 18px;margin:0 0 14px;">
+      <div style="font-size:18px;font-weight:800;color:#222;">${av} ${esc(name)}${s.grade ? ` <span style="font-weight:400;color:#999;font-size:13px;">Grade ${esc(s.grade)}</span>` : ''}</div>
+      <div style="font-size:14px;color:#555;margin:6px 0 10px;">✅ <b>${doneItems.length}</b> items completed &nbsp;·&nbsp; ⏱️ <b>${hours}</b> hours of schoolwork</div>
+      ${subjects.length ? `<table style="border-collapse:collapse;width:100%;">${subjectRows}</table>` : '<p style="color:#999;font-size:13px;margin:6px 0;">No completed work recorded.</p>'}
+      ${mastered.length ? `
+      <div style="font-size:14px;font-weight:700;color:#5b4b8a;margin:12px 0 2px;">🧠 Mastered by heart (${mastered.length})</div>
+      <ul style="margin:4px 0 2px;padding-left:4px;list-style:none;">${mastered.map((t) => `<li style="margin:3px 0;color:#5b4b8a;font-size:14px;">🎤 ${esc(t)}</li>`).join('')}</ul>` : ''}
+    </div>`;
+  }).join('');
+
+  const familyHours = (familyMinutes / 60).toFixed(1);
+  textLines.push('', `Family totals: ${familyDone} items completed, ${familyHours} hours, ${familyMastered} pieces mastered.`);
+
+  const html = `
+  <div style="background:#f4f2ee;padding:22px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+    <h1 style="font-size:20px;color:#2a2a2a;margin:0 0 4px;">🎓 Wireman Family School</h1>
+    <p style="color:#777;margin:0 0 16px;">Year in Review — 2026–27</p>
+    ${sections}
+    <div style="background:#ffffff;border-radius:14px;border-top:5px solid #5b4b8a;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:14px 18px;">
+      <div style="font-size:16px;font-weight:800;color:#222;">🏫 The whole family, all year</div>
+      <div style="font-size:14px;color:#555;margin-top:6px;">✅ <b>${familyDone}</b> items completed &nbsp;·&nbsp; ⏱️ <b>${familyHours}</b> hours of schoolwork &nbsp;·&nbsp; 🧠 <b>${familyMastered}</b> pieces mastered by heart</div>
+    </div>
+    <p style="color:#aaa;font-size:12px;margin-top:14px;">What a year. Print one for the memory box.</p>
+  </div>`;
+
+  await db.collection('outbox').add({
+    to: REPORT_EMAIL,
+    subject: '🎓 Wireman Family School — Year in Review 2026–27',
+    text: textLines.join('\n'),
+    html,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { queued: true };
+}
+
+export const memoryBook = onCall({ invoker: 'public' }, async (request) => {
+  if (request.auth?.token?.role !== 'parent') {
+    throw new HttpsError('permission-denied', 'Parent only.');
+  }
+  return await buildMemoryBook();
+});
+
+// June 4 at 9:00 AM — just after the school year wraps.
+export const memoryBookJune = onSchedule(
+  { schedule: '0 9 4 6 *', timeZone: 'America/Detroit' },
+  async () => {
+    await buildMemoryBook();
   }
 );
 
