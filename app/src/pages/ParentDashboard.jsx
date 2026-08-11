@@ -242,7 +242,7 @@ export default function ParentDashboard() {
 
       <SweepPanel assignments={assignments} students={students} />
 
-      <WeekPreview students={students} />
+      <WeekPreview students={students} order={STUDENT_ORDER} />
 
       <QuickAdd students={students} order={STUDENT_ORDER} />
 

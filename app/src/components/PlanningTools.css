@@ -290,3 +290,30 @@
   font-weight: 700;
   text-decoration: none;
 }
+
+/* Per-kid collapse rows inside each preview day */
+.weekprev-kidrow {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: none;
+  background: #f6f5fb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 3px 0;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.weekprev-kidrow:hover {
+  background: #edeaf9;
+}
+
+.weekprev-kidmeta {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #777;
+}

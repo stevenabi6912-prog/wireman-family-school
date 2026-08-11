@@ -94,11 +94,12 @@ export function SweepPanel({ assignments, students }) {
 }
 
 // ---- Next-week preview: see what's coming, nudge items between days ----
-export function WeekPreview({ students }) {
+export function WeekPreview({ students, order }) {
   const [items, setItems] = useState(null);
   const [open, setOpen] = useState(false);
   const [bump, setBump] = useState(0);
   const [expanded, setExpanded] = useState(null); // assignment id whose details are open
+  const [openKids, setOpenKids] = useState({}); // "{date}:{kid}" -> true (collapsed by default)
 
   useEffect(() => {
     if (!open) return;
@@ -109,10 +110,13 @@ export function WeekPreview({ students }) {
       .catch(() => setItems([]));
   }, [open, bump]);
 
+  // date -> kid -> that kid's items, so a day collapses into four name rows
   const byDate = useMemo(() => {
     const map = {};
-    for (const a of items ?? []) (map[a.scheduledDate] ??= []).push(a);
-    Object.values(map).forEach((l) => l.sort((x, y) => x.studentId.localeCompare(y.studentId) || (x.sequence ?? 0) - (y.sequence ?? 0)));
+    for (const a of items ?? []) ((map[a.scheduledDate] ??= {})[a.studentId] ??= []).push(a);
+    for (const kids of Object.values(map)) {
+      Object.values(kids).forEach((l) => l.sort((x, y) => (x.sequence ?? 0) - (y.sequence ?? 0)));
+    }
     return map;
   }, [items]);
 
@@ -132,28 +136,48 @@ export function WeekPreview({ students }) {
             {Object.keys(byDate).sort().map((date) => (
               <div key={date} className="weekprev-day">
                 <h4>{new Date(date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h4>
-                <ul>
-                  {byDate[date].map((a) => (
-                    <li key={a.id} className={expanded === a.id ? 'weekprev-li-open' : ''}>
-                      <div className="weekprev-row">
-                        <button
-                          className="weekprev-item"
-                          title="See what this item asks for"
-                          onClick={() => setExpanded(expanded === a.id ? null : a.id)}
-                        >
-                          {resolveTheme(a.studentId, students[a.studentId]?.theme).avatar} {a.title}
-                          {a.parentNote && ' 📌'}
-                        </button>
-                        <span className="weekprev-actions">
-                          <button title="A day earlier" onClick={() => shift(a, -1)}>◀</button>
-                          <button title="A day later" onClick={() => shift(a, 1)}>▶</button>
-                          <button className="note-btn" title="Note for the kid" onClick={() => editNote(a).then((ok) => ok && setBump((b) => b + 1))}>📌</button>
+                {(order ?? Object.keys(byDate[date])).filter((kid) => byDate[date][kid]).map((kid) => {
+                  const key = `${date}:${kid}`;
+                  const kidItems = byDate[date][kid];
+                  const totalMins = kidItems.reduce((s, a) => s + (a.estimatedMinutes ?? 0), 0);
+                  return (
+                    <div key={key}>
+                      <button
+                        className="weekprev-kidrow"
+                        onClick={() => setOpenKids((o) => ({ ...o, [key]: !o[key] }))}
+                      >
+                        <span>{resolveTheme(kid, students[kid]?.theme).avatar} {students[kid]?.name ?? kid}</span>
+                        <span className="weekprev-kidmeta">
+                          {kidItems.length} items · ~{Math.round(totalMins / 60 * 10) / 10}h {openKids[key] ? '▾' : '▸'}
                         </span>
-                      </div>
-                      {expanded === a.id && <ItemDetails assignment={a} />}
-                    </li>
-                  ))}
-                </ul>
+                      </button>
+                      {openKids[key] && (
+                        <ul>
+                          {kidItems.map((a) => (
+                            <li key={a.id} className={expanded === a.id ? 'weekprev-li-open' : ''}>
+                              <div className="weekprev-row">
+                                <button
+                                  className="weekprev-item"
+                                  title="See what this item asks for"
+                                  onClick={() => setExpanded(expanded === a.id ? null : a.id)}
+                                >
+                                  {a.title}
+                                  {a.parentNote && ' 📌'}
+                                </button>
+                                <span className="weekprev-actions">
+                                  <button title="A day earlier" onClick={() => shift(a, -1)}>◀</button>
+                                  <button title="A day later" onClick={() => shift(a, 1)}>▶</button>
+                                  <button className="note-btn" title="Note for the kid" onClick={() => editNote(a).then((ok) => ok && setBump((b) => b + 1))}>📌</button>
+                                </span>
+                              </div>
+                              {expanded === a.id && <ItemDetails assignment={a} />}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
             {Object.keys(byDate).length === 0 && <p className="sweep-hint">Nothing scheduled in the next 7 days.</p>}
