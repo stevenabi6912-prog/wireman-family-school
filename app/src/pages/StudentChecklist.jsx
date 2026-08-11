@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
@@ -45,6 +45,9 @@ export default function StudentChecklist() {
   const { kidId } = useParams();
   const studentId = kidId ?? ownStudentId;
   const parentView = Boolean(kidId);
+  // ?item=<assignmentId> — the nightly email links straight at one card.
+  const [searchParams] = useSearchParams();
+  const focusItemId = searchParams.get('item');
   const [student, setStudent] = useState(null);
   const [assignments, setAssignments] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -112,6 +115,21 @@ export default function StudentChecklist() {
       .map((a) => ({ ...a, catchUp: true }));
     return [...catchUp, ...assignments];
   }, [assignments, overdueRaw]);
+
+  // Land on the exact card an email link pointed at: scroll it into view and
+  // let the highlight fade. Nothing happens if the item isn't on this page.
+  useEffect(() => {
+    if (!focusItemId || !combined) return;
+    const el = document.getElementById(`item-${focusItemId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusItemId, combined]);
+
+  // Followed a link to something that isn't on the list in front of her:
+  // either worked ahead (it's in the bonus round) or from another day.
+  const focusElsewhere = Boolean(focusItemId) && Boolean(combined) && !combined.some((a) => a.id === focusItemId)
+    ? (upcoming.some((a) => a.id === focusItemId) ? 'bonus' : 'other-day')
+    : null;
 
   const { doneCount, activeIndex } = useMemo(() => {
     if (!combined) return { doneCount: 0, activeIndex: -1 };
@@ -286,6 +304,14 @@ export default function StudentChecklist() {
           <span>You're seeing {firstName}'s page exactly as they do — checking things off here is real.</span>
         </div>
       )}
+      {focusElsewhere && (
+        <div className="focus-miss-bar">
+          {focusElsewhere === 'bonus'
+            ? 'That one was worked ahead — it belongs to a later day, so it isn\'t on this list.'
+            : `That item isn't on ${firstName ? `${firstName}'s` : 'this'} list right now — it was scheduled for another day.`}{' '}
+          <Link to="/records">Open the gradebook</Link> to find it.
+        </div>
+      )}
       <header
         className={`hero-header ${headerImageUrl ? 'hero-header-image' : ''}`}
         style={headerImageUrl ? { backgroundImage: `url(${headerImageUrl})` } : undefined}
@@ -414,6 +440,7 @@ export default function StudentChecklist() {
                   grade={student?.grade}
                   parentView={parentView}
                   undoable={a.id === undoableId}
+                  focused={a.id === focusItemId}
                   state={DONE_STATUSES.has(a.status) ? 'done' : i === activeIndex ? 'active' : 'locked'}
                 />
               ))}

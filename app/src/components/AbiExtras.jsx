@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { resolveTheme } from '../config/themes';
+import { gradePct, scoreLabel } from '../lib/grades';
 import './AbiExtras.css';
 
 const KIDS = ['luke', 'layla', 'logan', 'lazarus'];
@@ -56,7 +57,7 @@ export function SearchBox({ students, grades }) {
                 <span className="search-title">{a.title}</span>
                 <span className="search-meta">
                   {a.scheduledDate} · {DONE.has(a.status) ? '✅' : a.status}
-                  {a.grade && ` · ${a.grade.overriddenScore ?? a.grade.score}/${a.grade.maxScore}`}
+                  {a.grade && ` · ${scoreLabel(a.grade, { pending: 'needs your score' })}`}
                 </span>
               </li>
             ))}
@@ -111,8 +112,12 @@ export function ReportCards({ students, grades, allAssignments, subjectNames }) 
         if (!when) continue;
         const iso = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')}`;
         if (iso < term.start || iso > term.end) continue;
+        // Ungraded (or no "out of" on file) can't average — skip it rather
+        // than dragging the whole subject to NaN.
+        const pct = gradePct(g);
+        if (pct == null) continue;
         const row = (gradeRows[g.subjectId] ??= { sum: 0, n: 0 });
-        row.sum += (g.overriddenScore ?? g.score) / g.maxScore;
+        row.sum += pct / 100;
         row.n++;
       }
       out[kid] = { days: days.size, hours: (minutes / 60).toFixed(1), done: inTerm.length, gradeRows };

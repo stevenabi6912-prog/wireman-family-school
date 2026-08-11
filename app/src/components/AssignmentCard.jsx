@@ -45,7 +45,7 @@ function paceLine(targetMinutes, large) {
 
 export default function AssignmentCard({
   assignment, studentId, state, large, memoryWork, targetMinutes, grade,
-  parentView, undoable,
+  parentView, undoable, focused,
 }) {
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
@@ -79,7 +79,10 @@ export default function AssignmentCard({
   }
 
   return (
-    <div className={`assignment-card assignment-${state} ${large ? 'assignment-large' : ''}`}>
+    <div
+      id={`item-${assignment.id}`}
+      className={`assignment-card assignment-${state} ${large ? 'assignment-large' : ''} ${focused ? 'assignment-focused' : ''}`}
+    >
       <div className="assignment-header">
         <span className="assignment-type">{assignment.catchUp && state !== 'done' ? '⏰ ' : ''}{TYPE_LABELS[assignment.itemType] ?? assignment.itemType}</span>
         <span className="assignment-title">{assignment.title}</span>

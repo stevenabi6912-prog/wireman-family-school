@@ -14,6 +14,15 @@ export function gradePct(g) {
   return Math.round((score / g.maxScore) * 100);
 }
 
+// How a grade reads on screen. Never "null": a grade with no score is still
+// Abi's to give, and a score with no "out of" on file shows bare points.
+export function scoreLabel(g, { pending = 'review' } = {}) {
+  const score = g.overriddenScore ?? g.score;
+  if (score == null) return pending;
+  const star = g.overriddenScore != null ? ' *' : '';
+  return g.maxScore > 0 ? `${score}/${g.maxScore}${star}` : `${score} pts${star}`;
+}
+
 export function watchAllGrades(callback) {
   return onSnapshot(collection(db, 'grades'), (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -41,12 +50,18 @@ export function computeAverages(grades) {
   return out;
 }
 
-export async function overrideGrade(gradeId, overriddenScore) {
-  await updateDoc(doc(db, 'grades', gradeId), {
+// Abi's score wins. Items with no answer key are stored with no maxScore at
+// all, so when she scores one by hand we take the "out of" from her too —
+// otherwise the grade renders as "8/null" everywhere and never counts toward
+// an average.
+export async function overrideGrade(gradeId, overriddenScore, maxScore = null) {
+  const patch = {
     overriddenScore,
     needsManualReview: false,
     reviewedAt: serverTimestamp(),
-  });
+  };
+  if (maxScore != null) patch.maxScore = maxScore;
+  await updateDoc(doc(db, 'grades', gradeId), patch);
 }
 
 export async function approveGrade(gradeId) {

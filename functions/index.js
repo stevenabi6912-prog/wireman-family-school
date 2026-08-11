@@ -418,6 +418,28 @@ export const gradeSubmissionOnCreate = onDocumentCreated(
 
 const REPORT_EMAIL = 'stevenabi6912@gmail.com';
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
+
+// Deep links Abi can tap straight from an email. The kid pages accept
+// ?item=<assignmentId>, which scrolls to that card and highlights it; the
+// dashboard's review queue is anchored at #needs-your-eyes.
+const APP_URL = 'https://stevenabi6912-prog.github.io/wireman-family-school/';
+const kidItemUrl = (studentId, assignmentId) =>
+  `${APP_URL}dashboard/kid/${encodeURIComponent(studentId)}?item=${encodeURIComponent(assignmentId)}`;
+const REVIEW_URL = `${APP_URL}dashboard#needs-your-eyes`;
+
+const escHtml = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+// Never show Abi the word "null". Two cases produce a scoreless grade:
+//   - nothing scored yet (no answer key, or grading errored) — that's hers to do;
+//   - a score with no "out of" on file, which is what a keyless item looks like
+//     after she types a score into the review queue (maxScore stays unset).
+// The second used to render as "8/null"; show the bare points instead.
+function scoreLabel(g) {
+  const score = g.overriddenScore ?? g.score;
+  if (score == null) return 'waiting for your review';
+  if (!(g.maxScore > 0)) return `${score} points`;
+  return `${score}/${g.maxScore} (${Math.round((score / g.maxScore) * 100)}%)`;
+}
 const DONE = new Set(['submitted', 'graded', 'waived']);
 
 function isoToday(tz = 'America/Detroit') {
@@ -452,6 +474,14 @@ async function buildNightlyReport() {
   const students = {};
   studentSnap.docs.forEach((d) => { students[d.id] = d.data(); });
 
+  // Titles for every assignment in play, so nothing in the email is ever
+  // labelled with a raw document id.
+  const titles = {};
+  assignSnap.docs.forEach((d) => {
+    const t = d.data().title;
+    if (t) titles[d.id] = t;
+  });
+
   const perStudent = {};
   for (const id of STUDENT_ORDER) {
     perStudent[id] = { name: students[id]?.name ?? id, completedToday: [], missing: [], gradesToday: [] };
@@ -460,32 +490,49 @@ async function buildNightlyReport() {
     const a = d.data();
     const bucket = perStudent[a.studentId];
     if (!bucket) return;
-    if (a.scheduledDate === today && DONE.has(a.status)) bucket.completedToday.push(a.title);
-    if (!DONE.has(a.status) && a.scheduledDate <= today) bucket.missing.push(`${a.title} (${a.scheduledDate})`);
+    const item = { id: d.id, title: a.title ?? 'Untitled item', scheduledDate: a.scheduledDate ?? today };
+    if (a.scheduledDate === today && DONE.has(a.status)) bucket.completedToday.push(item);
+    if (!DONE.has(a.status) && a.scheduledDate <= today) bucket.missing.push(item);
   });
-  gradeSnap.docs.forEach((d) => {
-    const g = d.data();
-    const when = g.gradedAt?.toDate?.()?.toLocaleDateString?.('sv-SE', { timeZone: 'America/Detroit' });
-    if (when !== today) return;
+
+  // Grades posted today. Worked-ahead (future-dated) items are graded today
+  // but sit outside the assignment query above, so fetch their titles too.
+  const todaysGrades = gradeSnap.docs
+    .map((d) => d.data())
+    .filter((g) => g.gradedAt?.toDate?.()?.toLocaleDateString?.('sv-SE', { timeZone: 'America/Detroit' }) === today);
+  const unknownIds = [...new Set(todaysGrades.map((g) => g.assignmentId).filter((id) => id && !titles[id]))];
+  if (unknownIds.length) {
+    const docs = await db.getAll(...unknownIds.map((id) => db.doc(`assignments/${id}`)));
+    docs.forEach((d) => {
+      const t = d.exists ? d.data().title : null;
+      if (t) titles[d.id] = t;
+    });
+  }
+  todaysGrades.forEach((g) => {
     const bucket = perStudent[g.studentId];
     if (!bucket) return;
-    const score = g.overriddenScore ?? g.score;
-    bucket.gradesToday.push(
-      score == null
-        ? `${g.assignmentId}: waiting for your review`
-        : `${g.assignmentId}: ${score}/${g.maxScore}${g.needsManualReview ? ' (flagged for review)' : ''}`
-    );
+    bucket.gradesToday.push({
+      id: g.assignmentId ?? null,
+      title: titles[g.assignmentId] ?? 'Untitled item',
+      score: scoreLabel(g),
+      needsReview: Boolean(g.needsManualReview),
+    });
   });
 
   const lines = [`Wireman Family School — evening report for ${today}`, ''];
   for (const id of STUDENT_ORDER) {
     const s = perStudent[id];
     lines.push(`${s.name}:`);
-    lines.push(`  Done today: ${s.completedToday.length ? s.completedToday.join('; ') : 'nothing completed'}`);
-    if (s.missing.length) lines.push(`  Missing (${s.missing.length}): ${s.missing.slice(0, 5).join('; ')}${s.missing.length > 5 ? '…' : ''}`);
-    if (s.gradesToday.length) lines.push(`  Grades posted: ${s.gradesToday.join('; ')}`);
+    lines.push(`  Done today: ${s.completedToday.length ? s.completedToday.map((i) => i.title).join('; ') : 'nothing completed'}`);
+    if (s.missing.length) {
+      lines.push(`  Missing (${s.missing.length}): ${s.missing.slice(0, 5).map((i) => `${i.title} (${i.scheduledDate})`).join('; ')}${s.missing.length > 5 ? '…' : ''}`);
+    }
+    if (s.gradesToday.length) {
+      lines.push(`  Grades posted: ${s.gradesToday.map((g) => `${g.title}: ${g.score}${g.needsReview ? ' (flagged for review)' : ''}`).join('; ')}`);
+    }
     lines.push('');
   }
+  lines.push(`Open the dashboard: ${APP_URL}dashboard`);
   const text = lines.join('\n');
 
   // Pretty HTML version — one colored card per kid (inline styles for email clients)
@@ -495,10 +542,21 @@ async function buildNightlyReport() {
     logan: { color: '#4a6b3a', emoji: '🎣' },
     lazarus: { color: '#1f9e46', emoji: '🎯' },
   };
-  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const list = (items, icon, color) => items.length
-    ? `<ul style="margin:6px 0;padding-left:4px;list-style:none;">${items.map((i) => `<li style="margin:3px 0;color:${color};font-size:14px;">${icon} ${esc(i)}</li>`).join('')}</ul>`
+  const esc = escHtml;
+  // Every item name is a link to that exact card on the kid's page — tap it in
+  // the email and land on the assignment, no hunting.
+  const link = (kid, itemId, label, color) => (itemId
+    ? `<a href="${kidItemUrl(kid, itemId)}" style="color:${color};text-decoration:underline;">${esc(label)}</a>`
+    : esc(label));
+  const list = (items, icon, color, kid, extra = () => '') => items.length
+    ? `<ul style="margin:6px 0;padding-left:4px;list-style:none;">${items.map((i) => `<li style="margin:3px 0;color:${color};font-size:14px;">${icon} ${link(kid, i.id, i.title, color)}${extra(i)}</li>`).join('')}</ul>`
     : '';
+  const lateChip = (i) => (i.scheduledDate && i.scheduledDate !== today
+    ? `<span style="color:#b3402f;font-size:12px;"> — due ${i.scheduledDate}</span>`
+    : '');
+  const gradeTail = (g) => ` <span style="color:#555;">— ${esc(g.score)}</span>${g.needsReview
+    ? ` <a href="${REVIEW_URL}" style="color:#b3402f;font-size:12px;">review it →</a>`
+    : ''}`;
   const cards = STUDENT_ORDER.map((id) => {
     const s = perStudent[id];
     const k = KID_STYLE[id];
@@ -510,11 +568,11 @@ async function buildNightlyReport() {
         ${allClear ? '<span style="background:#def0e3;color:#2c7a48;border-radius:999px;padding:2px 10px;font-size:12px;margin-left:8px;">Day done 🎉</span>' : ''}
         ${s.missing.length ? `<span style="background:#fde3df;color:#b3402f;border-radius:999px;padding:2px 10px;font-size:12px;margin-left:8px;">${s.missing.length} not done</span>` : ''}
       </div>
-      ${list(s.completedToday, '✅', '#2c7a48')}
+      ${list(s.completedToday, '✅', '#2c7a48', id)}
       ${s.completedToday.length === 0 ? '<p style="color:#999;font-size:13px;margin:6px 0;">Nothing finished today.</p>' : ''}
-      ${list(s.missing.slice(0, 6).map((m) => m.replace(/ \(\d{4}-\d{2}-\d{2}\)$/, '')), '⏰', '#9c5518')}
+      ${list(s.missing.slice(0, 6), '⏰', '#9c5518', id, lateChip)}
       ${s.missing.length > 6 ? `<p style="color:#9c5518;font-size:12px;">…and ${s.missing.length - 6} more</p>` : ''}
-      ${list(s.gradesToday, '📊', '#3b6ea8')}
+      ${list(s.gradesToday, '📊', '#3b6ea8', id, gradeTail)}
     </div>`;
   }).join('');
   const html = `
@@ -522,7 +580,7 @@ async function buildNightlyReport() {
     <h1 style="font-size:20px;color:#2a2a2a;margin:0 0 4px;">🏫 Wireman Family School</h1>
     <p style="color:#777;margin:0 0 16px;">Evening report — ${new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
     ${cards}
-    <p style="color:#aaa;font-size:12px;">Open the <a href="https://stevenabi6912-prog.github.io/wireman-family-school/" style="color:#5b4b8a;">dashboard</a> to reschedule, waive, or review grades.</p>
+    <p style="color:#aaa;font-size:12px;">Tap any item above to open it. Or go to the <a href="${APP_URL}dashboard" style="color:#5b4b8a;">dashboard</a> to reschedule, waive, or <a href="${REVIEW_URL}" style="color:#5b4b8a;">review grades</a>.</p>
   </div>`;
 
   await db.doc(`reports/${today}`).set({
@@ -666,7 +724,10 @@ export const buildPortfolio = onCall(
       const kidGrades = gradeSnap.docs.map((d) => d.data()).filter((g) => g.studentId === kid);
       for (const g of kidGrades.slice(0, 35)) {
         const score = g.overriddenScore ?? g.score;
-        const line = `${(titles[g.assignmentId] ?? g.assignmentId).slice(0, 60)}  —  ${score != null ? `${score}/${g.maxScore}` : 'reviewed by parent'}`;
+        const scoreText = score == null
+          ? 'reviewed by parent'
+          : g.maxScore > 0 ? `${score}/${g.maxScore}` : `${score} points`;
+        const line = `${String(titles[g.assignmentId] ?? g.assignmentId).slice(0, 60)}  —  ${scoreText}`;
         cover.drawText(line, { x: 60, y, size: 10, font: body });
         y -= 16;
         if (y < 60) break;
@@ -931,8 +992,10 @@ export const fridayWins = onSchedule(
 
     const wins = {};
     for (const id of STUDENT_ORDER) wins[id] = { done: 0, total: 0, bestGrade: null, banked: 0 };
+    const titles = {};
     assignSnap.docs.forEach((d) => {
       const a = d.data();
+      if (a.title) titles[d.id] = a.title;
       const w = wins[a.studentId];
       if (!w) return;
       w.total++;
@@ -946,7 +1009,9 @@ export const fridayWins = onSchedule(
       if (score == null || !g.maxScore) return;
       const pct = Math.round((score / g.maxScore) * 100);
       const w = wins[g.studentId];
-      if (w && (!w.bestGrade || pct > w.bestGrade.pct)) w.bestGrade = { pct, assignmentId: g.assignmentId };
+      if (w && (!w.bestGrade || pct > w.bestGrade.pct)) {
+        w.bestGrade = { pct, assignmentId: g.assignmentId ?? null, title: titles[g.assignmentId] ?? null };
+      }
     });
 
     if (Object.values(wins).every((w) => w.total === 0)) return; // no school this week
@@ -957,7 +1022,12 @@ export const fridayWins = onSchedule(
       const av = students[id]?.theme?.avatar ?? '⭐';
       const lines = [];
       if (w.total) lines.push(`✅ Finished ${w.done} of ${w.total} items this week`);
-      if (w.bestGrade) lines.push(`🏆 Best grade: ${w.bestGrade.pct}%`);
+      if (w.bestGrade) {
+        const label = w.bestGrade.title
+          ? `${w.bestGrade.pct}% on <a href="${kidItemUrl(id, w.bestGrade.assignmentId)}" style="color:#3b6ea8;">${escHtml(w.bestGrade.title)}</a>`
+          : `${w.bestGrade.pct}%`;
+        lines.push(`🏆 Best grade: ${label}`);
+      }
       return `<div style="background:#fff;border-radius:14px;border-top:5px solid ${KID_STYLE[id]};padding:14px 18px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,0.08);">
         <div style="font-size:17px;font-weight:800;">${av} ${students[id]?.name ?? id}</div>
         ${lines.map((l) => `<div style="font-size:14px;margin-top:4px;">${l}</div>`).join('') || '<div style="color:#999;font-size:13px;">Quiet week.</div>'}
@@ -967,7 +1037,7 @@ export const fridayWins = onSchedule(
     await db.collection('outbox').add({
       to: REPORT_EMAIL,
       subject: `🎉 This week's wins — ${STUDENT_ORDER.map((id) => `${students[id]?.name} ${wins[id].done}✓`).join(', ')}`,
-      text: STUDENT_ORDER.map((id) => `${students[id]?.name}: ${wins[id].done}/${wins[id].total} done${wins[id].bestGrade ? `, best ${wins[id].bestGrade.pct}%` : ''}`).join('\n'),
+      text: STUDENT_ORDER.map((id) => `${students[id]?.name}: ${wins[id].done}/${wins[id].total} done${wins[id].bestGrade ? `, best ${wins[id].bestGrade.pct}%${wins[id].bestGrade.title ? ` on ${wins[id].bestGrade.title}` : ''}` : ''}`).join('\n'),
       html: `<div style="background:#f4f2ee;padding:22px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
         <h1 style="font-size:20px;margin:0 0 4px;">🎉 This week's wins</h1>
         <p style="color:#777;margin:0 0 16px;">Wireman Family School — week ending ${today}</p>
@@ -1097,8 +1167,12 @@ export const gradingTuneUp = onSchedule(
     snap.docs.forEach((d) => {
       const g = d.data();
       if (g.overriddenScore === g.score) return;
+      // Keyless items are never auto-scored — say so rather than feeding the
+      // model "auto null/null".
+      const out = g.maxScore > 0 ? `/${g.maxScore}` : ' points';
+      const auto = g.score == null ? 'not auto-graded (no answer key)' : `auto ${g.score}${out}`;
       (bySubject[g.subjectId] = bySubject[g.subjectId] ?? []).push(
-        `auto ${g.score}/${g.maxScore} -> Abi set ${g.overriddenScore}/${g.maxScore}; grader note: ${g.misunderstandingSummary ?? 'none'}`
+        `${auto} -> Abi set ${g.overriddenScore}${out}; grader note: ${g.misunderstandingSummary ?? 'none'}`
       );
     });
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });

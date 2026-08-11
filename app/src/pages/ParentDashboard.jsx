@@ -9,7 +9,7 @@ import {
   daysOverdue,
   DONE_STATUSES,
 } from '../lib/parentData';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { todayISO } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { projectYear } from '../lib/reflow';
@@ -40,6 +40,7 @@ function greeting() {
 export default function ParentDashboard() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const [students, setStudents] = useState(null);
   const [assignments, setAssignments] = useState(null);
   const [year, setYear] = useState(null); // { family, projectedEnd, targetEnd }
@@ -60,6 +61,14 @@ export default function ParentDashboard() {
       unsubG();
     };
   }, []);
+
+  // Email links carry an anchor (#needs-your-eyes). The section only exists
+  // once the data has loaded, so scroll when it appears — not just on mount.
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [hash, students, assignments, grades.length]);
 
   function refreshYear() {
     projectYear().then(setYear).catch(() => {});
@@ -259,7 +268,8 @@ export default function ParentDashboard() {
         )}
       </section>
 
-      <section className="review-section">
+      {/* anchored: the nightly email links flagged grades to #needs-your-eyes */}
+      <section className="review-section" id="needs-your-eyes">
         <h2>Needs your eyes {reviewQueue.length > 0 && <span className="review-count">{reviewQueue.length}</span>}</h2>
         {reviewQueue.length === 0 ? (
           <p className="struggle-empty">Nothing waiting on you. ✅</p>

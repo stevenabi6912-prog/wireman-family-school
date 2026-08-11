@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { STUDENTS, PARENT } from '../config/students';
 import './Login.css';
@@ -14,10 +14,16 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const { user, role, loading, loginWithPin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Where a link was pointing before the PIN screen got in the way (see
+  // RequireRole). Only Abi is sent onward — a kid always lands on their day.
+  const from = typeof location.state?.from === 'string' ? location.state.from : null;
+  const landing = (isParent) => (isParent ? from ?? '/dashboard' : '/today');
 
   // Already signed in (session persisted) — skip the login screen entirely.
   if (!loading && user && role) {
-    return <Navigate to={role === 'parent' ? '/dashboard' : '/today'} replace />;
+    return <Navigate to={landing(role === 'parent')} replace />;
   }
 
   function selectCard(person, isParent) {
@@ -36,7 +42,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await loginWithPin(selected.id, nextPin);
-      navigate(selected.isParent ? '/dashboard' : '/today', { replace: true });
+      navigate(landing(selected.isParent), { replace: true });
     } catch {
       setError(true); // stays until the next keypad press so kids can read it
       setPin('');
