@@ -67,7 +67,8 @@ export const TRACKS_FOR_SUBJECT = {
   history: ['history'],
   science: ['science'],
   ela: ['grammar', 'spelling'],
-  writing: ['grammar'],
+  // Writing deliberately has no warm-up: grammar is already drilled on the
+  // ELA card the same day, and nobody wants to recite it twice.
   spanish: ['spanish'],
   math: ['math'],
 };
