@@ -19,6 +19,8 @@ import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
 import MemoryWork from '../components/MemoryWork';
 import RecitePanel from '../components/RecitePanel';
+import MorningBriefing, { FamilyQuest, EmailPrefs } from '../components/MorningBriefing';
+import { SweepPanel, WeekPreview, QuickAdd, EchoShelf } from '../components/PlanningTools';
 import SchoolCalendar from '../components/SchoolCalendar';
 import BugReport from '../components/BugReport';
 import AbiTheme from '../components/AbiTheme';
@@ -122,6 +124,8 @@ export default function ParentDashboard() {
           <button className="dash-logout" onClick={logout}>Switch person</button>
         </div>
       </header>
+
+      <MorningBriefing students={students} byStudent={byStudent} order={STUDENT_ORDER} reviewCount={reviewQueue.length} />
 
       <section className="student-grid">
         {STUDENT_ORDER.map((id) => {
@@ -229,9 +233,21 @@ export default function ParentDashboard() {
         )}
       </section>
 
+      <SweepPanel assignments={assignments} students={students} />
+
+      <WeekPreview students={students} />
+
+      <QuickAdd students={students} order={STUDENT_ORDER} />
+
+      <FamilyQuest editable />
+
       <RecitePanel students={students ?? {}} order={STUDENT_ORDER} />
 
+      <EchoShelf students={students} order={STUDENT_ORDER} />
+
       <MemoryWork students={students} order={STUDENT_ORDER} />
+
+      <EmailPrefs />
 
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
 

@@ -15,7 +15,9 @@ import WeeklyReport from '../components/WeeklyReport';
 import ExplorerClub from '../components/ExplorerClub';
 import BugReport from '../components/BugReport';
 import MemoryBlock from '../components/MemoryBlock';
+import { FamilyQuest } from '../components/MorningBriefing';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
+import { fetchStreakStats } from '../lib/streaks';
 import './StudentChecklist.css';
 
 const DONE_STATUSES = new Set(['submitted', 'graded', 'waived']);
@@ -49,6 +51,8 @@ export default function StudentChecklist() {
   const [calOpen, setCalOpen] = useState(false);
   const [breakReady, setBreakReady] = useState(false);
   const [minsToBreak, setMinsToBreak] = useState(30);
+  const [family, setFamily] = useState(null); // pause-the-day + family quest
+  const [streakStats, setStreakStats] = useState(null);
   const prevDone = useRef(null);
   const prevBonusDone = useRef(null);
   const date = todayISO();
@@ -58,11 +62,14 @@ export default function StudentChecklist() {
     const unsubStudent = onSnapshot(doc(db, 'students', studentId), (snap) => {
       if (snap.exists()) setStudent(snap.data());
     });
+    const unsubFamily = onSnapshot(doc(db, 'families', 'wireman'), (s) => setFamily(s.data()));
+    fetchStreakStats(studentId, date).then(setStreakStats).catch(() => {});
     const unsubDay = watchDayAssignments(studentId, date, setAssignments);
     const unsubUpcoming = watchUpcomingAssignments(studentId, date, setUpcoming);
     const unsubOverdue = watchOverdueAssignments(studentId, date, setOverdueRaw);
     return () => {
       unsubStudent();
+      unsubFamily();
       unsubDay();
       unsubUpcoming();
       unsubOverdue();
@@ -113,17 +120,18 @@ export default function StudentChecklist() {
 
   // ---- pacing guide: the family plan starts school at 8:30. Each item gets
   // a target clock time (8:30 + the estimates of everything before it) so the
-  // kids always know roughly where they should be in the day. ----
-  const SCHOOL_START = 8 * 60 + 30;
+  // kids always know roughly where they should be in the day. If Abi paused
+  // the day (appointment, errand), every target shifts by that much. ----
+  const pauseMinutes = family?.pause?.date === date ? family.pause.minutes : 0;
   const targets = useMemo(() => {
+    let t = 8 * 60 + 30 + pauseMinutes;
     if (!combined) return [];
-    let t = SCHOOL_START;
     return combined.map((a) => {
       const start = t;
       t += a.estimatedMinutes ?? 20;
       return start;
     });
-  }, [combined]);
+  }, [combined, pauseMinutes]);
 
   const total = combined?.length ?? 0;
   const allDone = total > 0 && activeIndex === -1;
@@ -172,7 +180,7 @@ export default function StudentChecklist() {
       return;
     }
     if (bonusDoneToday.length > prevBonusDone.current) {
-      playDing();
+      playDing(student?.theme?.ding);
       setBurst('small');
     }
     prevBonusDone.current = bonusDoneToday.length;
@@ -190,9 +198,11 @@ export default function StudentChecklist() {
         playFanfare();
         setBurst('big');
       } else {
-        playDing();
+        playDing(student?.theme?.ding);
         setBurst('small');
       }
+      // streak/badge numbers move with each completion
+      fetchStreakStats(studentId, date).then(setStreakStats).catch(() => {});
     }
     prevDone.current = doneCount;
   }, [doneCount, allDone, assignments]);
@@ -279,6 +289,17 @@ export default function StudentChecklist() {
         </div>
       </header>
 
+      {streakStats && (streakStats.streak > 0 || streakStats.badges.length > 0) && (
+        <div className="streak-strip">
+          {streakStats.streak > 0 && (
+            <span className="streak-flame">🔥 {streakStats.streak}-day streak{large ? '!' : ''}</span>
+          )}
+          {streakStats.badges.map((b) => (
+            <span key={b.label} className="streak-badge" title={b.label}>{b.emoji} {b.label}</span>
+          ))}
+        </div>
+      )}
+
       {total === 0 ? (
         <div className="empty-day">
           <div className="empty-day-emoji">{theme.avatar}</div>
@@ -348,9 +369,11 @@ export default function StudentChecklist() {
 
       <WeeklyReport studentId={studentId} justFinished={allDone} />
 
+      <FamilyQuest />
+
       <YearTrail studentId={studentId} avatar={theme.avatar} />
 
-      {burst && <Confetti size={burst} onDone={() => setBurst(null)} />}
+      {burst && <Confetti size={burst} style={student?.theme?.confetti} onDone={() => setBurst(null)} />}
 
       {breakOpen && (
         <BreakRoom studentId={studentId} large={large} onClose={() => setBreakOpen(false)} />
@@ -361,7 +384,13 @@ export default function StudentChecklist() {
       {pickerOpen && (
         <ThemePicker
           studentId={studentId}
-          current={{ palette: theme.palette, avatar: theme.avatar, headerImagePath: student?.theme?.headerImagePath ?? null }}
+          current={{
+            palette: theme.palette,
+            avatar: theme.avatar,
+            headerImagePath: student?.theme?.headerImagePath ?? null,
+            ding: student?.theme?.ding ?? 'classic',
+            confetti: student?.theme?.confetti ?? 'classic',
+          }}
           onClose={() => setPickerOpen(false)}
         />
       )}

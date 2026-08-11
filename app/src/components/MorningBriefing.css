@@ -1,0 +1,181 @@
+.briefing-card,
+.quest-card,
+.emailprefs-card {
+  background: #fff;
+  border: 1px solid #e4e2ef;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.briefing-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.briefing-head h2 {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.briefing-day {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #777;
+}
+
+.briefing-pause {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.briefing-pause button {
+  border: 1px solid #ccc;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.pause-chip {
+  background: #fff4d6;
+  border: 1px solid #e8c96a;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.briefing-kids {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+
+.briefing-kid {
+  background: #f6f5fb;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.briefing-kid em {
+  color: #c05621;
+  font-style: normal;
+}
+
+.briefing-kid-done {
+  background: #e3f5e3;
+}
+
+.briefing-needs {
+  margin: 8px 0 2px;
+  padding-left: 20px;
+}
+
+.briefing-needs li {
+  margin: 3px 0;
+  font-size: 0.95rem;
+}
+
+.briefing-empty {
+  margin: 8px 0 2px;
+  color: #666;
+}
+
+/* Family quest */
+.quest-total {
+  margin: 4px 0 8px;
+}
+
+.quest-bar {
+  height: 14px;
+  background: #eee;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.quest-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f9c74f, #f3722c);
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.quest-next {
+  margin: 6px 0 2px;
+  font-size: 0.95rem;
+}
+
+.quest-edit {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.quest-chip {
+  background: #f6f5fb;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.quest-chip-hit {
+  background: #e3f5e3;
+}
+
+.quest-chip button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+.quest-add {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.quest-add input {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font: inherit;
+}
+
+.quest-add input[type='number'] {
+  width: 70px;
+}
+
+.quest-add button {
+  border: 1px solid #6c5ce7;
+  background: #6c5ce7;
+  color: #fff;
+  border-radius: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* Email prefs */
+.emailpref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.95rem;
+  cursor: pointer;
+}

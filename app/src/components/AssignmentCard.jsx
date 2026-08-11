@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ref, uploadBytes } from 'firebase/storage';
+import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
 import { markStarted, completeAssignment, resolveContentUrl } from '../lib/assignments';
@@ -12,11 +14,12 @@ const TYPE_LABELS = {
   project: '🎨 Project',
   video: '🎬 Video lesson',
   audio: '🎧 Listen & speak',
+  task: '⭐ From Mom',
 };
 
 // Checkoff-only types have no typed submission: Bible and memorization are done
 // with a parent in person; reading, video, and audio just need a "done" tap.
-const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video', 'audio']);
+const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video', 'audio', 'task']);
 
 function clockLabel(mins) {
   const h = Math.floor(mins / 60);
@@ -69,6 +72,9 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
           {targetMinutes != null && paceLine(targetMinutes, large) && (
             <p className="pace-line">{paceLine(targetMinutes, large)}</p>
           )}
+          {assignment.parentNote && (
+            <p className="parent-note">📌 From Mom: {assignment.parentNote}</p>
+          )}
           {assignment.instructions && (
             <p className="assignment-instructions">
               {assignment.instructions}
@@ -114,6 +120,10 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
               : <PdfViewer contentPath={assignment.contentPath} />
           )}
 
+          {assignment.itemType === 'audio' && (
+            <EchoRecorder assignment={assignment} studentId={studentId} large={large} />
+          )}
+
           {CHECKOFF_TYPES.has(assignment.itemType) ? (
             <button className="submit-btn" onClick={markDone}>
               {assignment.itemType === 'memorization'
@@ -138,11 +148,42 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
   );
 }
 
+// Audio players remember where you left off (per track, per device) so a
+// snack break doesn't mean starting a 12-minute chapter over.
+function useAudioBookmark(path) {
+  const audioRef = useRef(null);
+  const lastSave = useRef(0);
+  const key = `apos:${path}`;
+
+  function onLoadedMetadata() {
+    const a = audioRef.current;
+    const saved = Number(localStorage.getItem(key));
+    if (a && saved > 5 && saved < a.duration - 10) a.currentTime = saved;
+  }
+
+  function onTimeUpdate() {
+    const a = audioRef.current;
+    if (!a) return;
+    const now = Date.now();
+    if (now - lastSave.current > 3000) {
+      lastSave.current = now;
+      localStorage.setItem(key, String(a.currentTime));
+    }
+  }
+
+  function onEnded() {
+    localStorage.removeItem(key);
+  }
+
+  return { ref: audioRef, onLoadedMetadata, onTimeUpdate, onEnded };
+}
+
 // Audio-lesson content (e.g. daily Flip Flop Spanish): a play button that
 // resolves the private Storage track and streams it in place.
 function LessonAudio({ path, large }) {
   const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(false);
+  const bookmark = useAudioBookmark(path);
 
   async function load() {
     setLoading(true);
@@ -154,11 +195,74 @@ function LessonAudio({ path, large }) {
     setLoading(false);
   }
 
-  if (url) return <audio className="chapter-audio" controls autoPlay src={url} />;
+  if (url) return <audio className="chapter-audio" controls autoPlay src={url} {...bookmark} />;
   return (
     <button className="video-link" onClick={load} disabled={loading}>
       {loading ? 'Loading…' : large ? '▶ Play my Spanish!' : '▶ Play today\'s lesson'}
     </button>
+  );
+}
+
+// Say-it-back recorder for Spanish: record yourself echoing the lesson, hear
+// it back, and it lands on Mom's "Spanish echoes" shelf automatically.
+function EchoRecorder({ assignment, studentId, large }) {
+  const [state, setState] = useState('idle'); // idle | recording | saving | done | error
+  const [playbackUrl, setPlaybackUrl] = useState(null);
+  const recRef = useRef(null);
+  const chunksRef = useRef([]);
+
+  async function start() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => chunksRef.current.push(e.data);
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
+        setPlaybackUrl(URL.createObjectURL(blob));
+        setState('saving');
+        try {
+          await uploadBytes(
+            ref(storage, `submissions/${studentId}/echo/${assignment.id}-${Date.now()}.webm`),
+            blob
+          );
+          setState('done');
+        } catch {
+          setState('done'); // playback still works locally even if upload failed
+        }
+      };
+      rec.start();
+      recRef.current = rec;
+      setState('recording');
+    } catch {
+      setState('error');
+    }
+  }
+
+  function stop() {
+    recRef.current?.stop();
+  }
+
+  if (state === 'error') return null; // no mic — hide quietly
+
+  return (
+    <div className="echo-recorder">
+      {state === 'recording' ? (
+        <button className="echo-btn echo-btn-rec" onClick={stop}>⏹ {large ? 'Stop!' : 'Stop recording'}</button>
+      ) : (
+        <button className="echo-btn" onClick={start}>
+          🎙️ {large ? 'Say it back!' : state === 'idle' ? 'Record yourself saying it' : 'Record again'}
+        </button>
+      )}
+      {playbackUrl && state !== 'recording' && (
+        <span className="echo-play">
+          <audio controls src={playbackUrl} />
+          {state === 'done' && <em className="echo-sent">Sent to Mom ✓</em>}
+          {state === 'saving' && <em className="echo-sent">Saving…</em>}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -187,7 +291,7 @@ function ChapterAudio({ assignment }) {
   }
 
   if (url && url !== 'missing') {
-    return <audio className="chapter-audio" controls autoPlay src={url} />;
+    return <ChapterAudioPlayer url={url} path={`curriculum/history/sotw2-audio/chapter-${chapter}.mp3`} />;
   }
   if (url === 'missing') return null;
   return (
@@ -195,4 +299,9 @@ function ChapterAudio({ assignment }) {
       {loading ? 'Loading the story…' : `🎧 Listen to Chapter ${chapter}`}
     </button>
   );
+}
+
+function ChapterAudioPlayer({ url, path }) {
+  const bookmark = useAudioBookmark(path);
+  return <audio className="chapter-audio" controls autoPlay src={url} {...bookmark} />;
 }

@@ -11,25 +11,22 @@ const SUBJECTS = ['bible', 'math', 'ela', 'history', 'science', 'writing', 'span
 const SUBJECT_NAMES = {
   bible: 'Bible', math: 'Math', ela: 'Grammar & Writing',
   history: 'History', science: 'Science', writing: 'Writing', spanish: 'Spanish',
+  custom: 'From Mom',
 };
 
 export default function Records() {
   const [grades, setGrades] = useState([]);
   const [students, setStudents] = useState({});
-  const [assignmentTitles, setAssignmentTitles] = useState({});
+  const [allAssignments, setAllAssignments] = useState([]);
   const [subjectFilter, setSubjectFilter] = useState('all');
 
   useEffect(() => {
     const unsubG = watchAllGrades(setGrades);
     const unsubS = watchStudents(setStudents);
-    // Titles for graded assignments — cover ALL assignments (demo/placement
-    // items have no dayIndex but still get graded)
+    // Full assignment docs: titles for the gradebook plus the raw material
+    // for the attendance & hours log below.
     const unsubT = onSnapshot(collection(db, 'assignments'), (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => {
-        map[d.id] = d.data().title;
-      });
-      setAssignmentTitles(map);
+      setAllAssignments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => {
       unsubG();
@@ -37,6 +34,46 @@ export default function Records() {
       unsubT();
     };
   }, []);
+
+  const assignmentTitles = useMemo(() => {
+    const map = {};
+    for (const a of allAssignments) map[a.id] = a.title;
+    return map;
+  }, [allAssignments]);
+
+  // Attendance & hours, derived from completed work: a day "attended" is any
+  // date with at least one finished item; hours favor the kid's real tracked
+  // minutes and fall back to the estimate.
+  const hoursLog = useMemo(() => {
+    const DONE = new Set(['submitted', 'graded', 'waived']);
+    const perKid = {};
+    for (const a of allAssignments) {
+      if (!DONE.has(a.status)) continue;
+      const k = (perKid[a.studentId] ??= { days: new Set(), minutes: 0, bySubject: {} });
+      k.days.add(a.scheduledDate);
+      const mins = a.actualMinutes ?? a.estimatedMinutes ?? 0;
+      k.minutes += mins;
+      k.bySubject[a.subjectId] = (k.bySubject[a.subjectId] ?? 0) + mins;
+    }
+    return perKid;
+  }, [allAssignments]);
+
+  function downloadHoursCSV() {
+    const rows = [['student', 'days attended', 'total hours', 'subject', 'subject hours']];
+    for (const [kid, k] of Object.entries(hoursLog)) {
+      const name = students[kid]?.name ?? kid;
+      for (const [subj, mins] of Object.entries(k.bySubject)) {
+        rows.push([name, k.days.size, (k.minutes / 60).toFixed(1), SUBJECT_NAMES[subj] ?? subj, (mins / 60).toFixed(1)]);
+      }
+    }
+    const blob = new Blob([rows.map((r) => r.join(',')).join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wireman-attendance-hours-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const averages = useMemo(() => computeAverages(grades), [grades]);
   const filtered = useMemo(
@@ -116,6 +153,42 @@ export default function Records() {
         );
       })}
       <p className="records-footnote">* score set by parent</p>
+
+      <section className="hours-section">
+        <h2>
+          Attendance & hours
+          <button className="records-csv no-print" onClick={downloadHoursCSV} style={{ marginLeft: 12 }}>
+            ⬇ CSV
+          </button>
+        </h2>
+        {Object.keys(hoursLog).length === 0 ? (
+          <p className="records-none">Fills in automatically as work gets finished.</p>
+        ) : (
+          <table className="records-table">
+            <thead>
+              <tr><th>Student</th><th>Days attended</th><th>Total hours</th><th>Top subjects</th></tr>
+            </thead>
+            <tbody>
+              {['luke', 'layla', 'logan', 'lazarus'].filter((k) => hoursLog[k]).map((kid) => {
+                const k = hoursLog[kid];
+                const top = Object.entries(k.bySubject)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 4)
+                  .map(([s, m]) => `${SUBJECT_NAMES[s] ?? s} ${(m / 60).toFixed(1)}h`)
+                  .join(' · ');
+                return (
+                  <tr key={kid}>
+                    <td>{students[kid]?.name ?? kid}</td>
+                    <td>{k.days.size}</td>
+                    <td>{(k.minutes / 60).toFixed(1)}</td>
+                    <td>{top}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       <section className="transcript-section">
         <h2>8th Grade Transcript — 2026–27</h2>

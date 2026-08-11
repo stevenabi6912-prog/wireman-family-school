@@ -1,0 +1,218 @@
+.sweep-card,
+.weekprev-card,
+.quickadd-card,
+.echo-card {
+  background: #fff;
+  border: 1px solid #e4e2ef;
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin: 16px 0;
+}
+
+.sweep-toggle {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.sweep-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 6px 0;
+}
+
+.sweep-all {
+  border: none;
+  background: none;
+  color: #6c5ce7;
+  cursor: pointer;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.sweep-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.sweep-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.sweep-list label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.sweep-old {
+  color: #c05621;
+  font-style: normal;
+  font-size: 0.85rem;
+}
+
+.sweep-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.sweep-actions button {
+  border: 1px solid #6c5ce7;
+  background: #6c5ce7;
+  color: #fff;
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sweep-actions .waive-btn {
+  background: #fff;
+  color: #b33;
+  border-color: #d99;
+}
+
+.note-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  font-size: 0.95rem;
+}
+
+.note-btn:hover {
+  opacity: 1;
+}
+
+/* Week preview */
+.weekprev-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.weekprev-day h4 {
+  margin: 4px 0 6px;
+}
+
+.weekprev-day ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.weekprev-day li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 0.88rem;
+}
+
+.weekprev-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekprev-actions {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.weekprev-actions button {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Quick add */
+.quickadd-card h2 {
+  margin: 0 0 8px;
+}
+
+.quickadd-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quickadd-row select,
+.quickadd-row input,
+.quickadd-note {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+}
+
+.quickadd-title {
+  flex: 1;
+  min-width: 180px;
+}
+
+.quickadd-note {
+  width: 100%;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+.quickadd-row button {
+  border: 1px solid #6c5ce7;
+  background: #6c5ce7;
+  color: #fff;
+  border-radius: 8px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.quickadd-row button:disabled {
+  opacity: 0.5;
+}
+
+/* Echo shelf */
+.echo-player {
+  width: 100%;
+  max-width: 420px;
+  margin: 8px 0;
+}
+
+.echo-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.echo-list button {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}

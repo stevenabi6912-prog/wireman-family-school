@@ -42,12 +42,32 @@ export function playClick() {
   } catch { /* audio unavailable — stay silent */ }
 }
 
-// Happy pop when an item is completed
-export function playDing() {
+// Happy pop when an item is completed. Each kid can pick their own style
+// in the theme picker (stored as theme.ding).
+export const DING_STYLES = {
+  classic: 'Classic ding',
+  arcade: 'Arcade zap',
+  chime: 'Magic chime',
+  pop: 'Bubble pop',
+};
+
+export function playDing(style = 'classic') {
   if (isMuted()) return;
   try {
-    tone({ freq: 523.25, duration: 0.12, type: 'sine', gain: 0.14 });          // C5
-    tone({ freq: 783.99, start: 0.09, duration: 0.22, type: 'sine', gain: 0.14 }); // G5
+    if (style === 'arcade') {
+      tone({ freq: 330, duration: 0.07, type: 'square', gain: 0.09 });
+      tone({ freq: 440, start: 0.07, duration: 0.07, type: 'square', gain: 0.09 });
+      tone({ freq: 660, start: 0.14, duration: 0.14, type: 'square', gain: 0.1 });
+    } else if (style === 'chime') {
+      tone({ freq: 880, duration: 0.5, type: 'sine', gain: 0.1 });
+      tone({ freq: 1318.5, start: 0.05, duration: 0.6, type: 'sine', gain: 0.07 });
+      tone({ freq: 1760, start: 0.1, duration: 0.7, type: 'sine', gain: 0.045 });
+    } else if (style === 'pop') {
+      tone({ freq: 300, duration: 0.09, type: 'sine', gain: 0.16, slideTo: 900 });
+    } else {
+      tone({ freq: 523.25, duration: 0.12, type: 'sine', gain: 0.14 });          // C5
+      tone({ freq: 783.99, start: 0.09, duration: 0.22, type: 'sine', gain: 0.14 }); // G5
+    }
   } catch { /* ignore */ }
 }
 

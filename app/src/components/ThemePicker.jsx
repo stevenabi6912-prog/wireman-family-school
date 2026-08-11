@@ -3,6 +3,8 @@ import { doc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore
 import { ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { PALETTES, AVATARS } from '../config/themes';
+import { playDing, DING_STYLES } from '../lib/sounds';
+import { CONFETTI_STYLES } from './Confetti';
 import './ThemePicker.css';
 
 export default function ThemePicker({ studentId, current, onClose }) {
@@ -14,6 +16,8 @@ export default function ThemePicker({ studentId, current, onClose }) {
         palette: current.palette,
         avatar: current.avatar,
         headerImagePath: current.headerImagePath ?? null,
+        ding: current.ding ?? 'classic',
+        confetti: current.confetti ?? 'classic',
         ...patch,
       },
       updatedAt: serverTimestamp(),
@@ -72,6 +76,32 @@ export default function ThemePicker({ studentId, current, onClose }) {
               onClick={() => save({ palette: key })}
             >
               {p.label}
+            </button>
+          ))}
+        </div>
+
+        <h3>Pick your victory sound</h3>
+        <div className="celebration-grid">
+          {Object.entries(DING_STYLES).map(([key, label]) => (
+            <button
+              key={key}
+              className={`celebration-choice ${(current.ding ?? 'classic') === key ? 'celebration-choice-active' : ''}`}
+              onClick={() => { playDing(key); save({ ding: key }); }}
+            >
+              🔊 {label}
+            </button>
+          ))}
+        </div>
+
+        <h3>Pick your celebration</h3>
+        <div className="celebration-grid">
+          {Object.entries(CONFETTI_STYLES).map(([key, label]) => (
+            <button
+              key={key}
+              className={`celebration-choice ${(current.confetti ?? 'classic') === key ? 'celebration-choice-active' : ''}`}
+              onClick={() => save({ confetti: key })}
+            >
+              {key === 'stars' ? '⭐' : key === 'hearts' ? '💖' : key === 'fireworks' ? '🎆' : '🎊'} {label}
             </button>
           ))}
         </div>
