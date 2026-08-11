@@ -54,6 +54,7 @@ export default function StudentChecklist() {
   const [upcoming, setUpcoming] = useState([]); // future-dated items for the bonus round
   const [overdueRaw, setOverdueRaw] = useState([]); // unfinished from earlier days
   const [breakOpen, setBreakOpen] = useState(false);
+  const [breakGame, setBreakGame] = useState(null); // jump straight to a game
   const [calOpen, setCalOpen] = useState(false);
   const [breakReady, setBreakReady] = useState(false);
   const [minsToBreak, setMinsToBreak] = useState(30);
@@ -243,10 +244,11 @@ export default function StudentChecklist() {
     return () => clearInterval(t);
   }, [studentId, activeIndex, breakOpen]);
 
-  function openBreak() {
+  function openBreak(toGame = null) {
     startBreak(studentId);
     setBreakReady(false);
     setMinsToBreak(30);
+    setBreakGame(toGame);
     setBreakOpen(true);
   }
 
@@ -350,6 +352,9 @@ export default function StudentChecklist() {
             uncapped={bonusUncapped}
           />
           <ExplorerClub large={large} />
+          <button className="versus-btn" onClick={() => openBreak('versus')}>
+            ⚔️ {large ? 'Play a game with someone!' : 'Play a sibling'}
+          </button>
         </div>
       ) : (
         <>
@@ -383,6 +388,11 @@ export default function StudentChecklist() {
               <p>School's out. Go tell Mom!</p>
               <SurpriseChest studentId={studentId} large={large} />
               <KudosSend studentId={studentId} large={large} />
+              {/* Finishing must not lock them out of a sibling game, or the
+                  other kid's match would sit waiting forever. */}
+              <button className="versus-btn" onClick={() => openBreak('versus')}>
+                ⚔️ {large ? 'Play a game with someone!' : 'Play a sibling'}
+              </button>
               <BonusRound
                 candidates={bonusCandidates}
                 doneToday={bonusDoneToday}
@@ -425,7 +435,12 @@ export default function StudentChecklist() {
       {burst && <Confetti size={burst} style={student?.theme?.confetti} onDone={() => setBurst(null)} />}
 
       {breakOpen && (
-        <BreakRoom studentId={studentId} large={large} onClose={() => setBreakOpen(false)} />
+        <BreakRoom
+          studentId={studentId}
+          large={large}
+          initialGame={breakGame}
+          onClose={() => { setBreakOpen(false); setBreakGame(null); }}
+        />
       )}
 
       {calOpen && <SchoolCalendar onClose={() => setCalOpen(false)} />}

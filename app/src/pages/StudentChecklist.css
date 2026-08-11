@@ -730,3 +730,19 @@
 }
 
 .pdf-bookmark button:disabled { opacity: 0.45; cursor: default; }
+
+/* Sibling-game entry from the finished-day and day-off screens */
+.versus-btn {
+  border: none;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+  border-radius: 999px;
+  padding: 12px 24px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 12px;
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.35);
+}
+
+.checklist-large .versus-btn { font-size: 1.15rem; padding: 14px 28px; }

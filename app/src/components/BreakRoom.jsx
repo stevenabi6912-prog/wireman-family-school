@@ -9,9 +9,9 @@ import { playDing, playFanfare } from '../lib/sounds';
 import './BreakRoom.css';
 
 // 5-minute brain break: pick a game, timer runs, hard cutoff, progress saved.
-export default function BreakRoom({ studentId, large, onClose }) {
+export default function BreakRoom({ studentId, large, onClose, initialGame = null }) {
   const [secondsLeft, setSecondsLeft] = useState(BREAK_SECONDS);
-  const [game, setGame] = useState(null); // 'sudoku' | 'wordsearch' | 'builder' | 'trivia' | 'versus'
+  const [game, setGame] = useState(initialGame); // 'sudoku' | 'wordsearch' | 'builder' | 'trivia' | 'versus'
   const [myTurnCount, setMyTurnCount] = useState(0);
 
   // Badge on the versus button so a waiting sibling game gets noticed.
