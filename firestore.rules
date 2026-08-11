@@ -132,13 +132,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ---- low-score alerts: written by the grading function as a once-only
-    //      guard so a regrade can't re-email Abi. Parent may read. ----
-    match /lowScoreAlerts/{id} {
-      allow read: if isParent();
-      allow write: if false;
-    }
-
     // ---- review decks: grading function writes; each kid reads their own ----
     match /reviewDecks/{studentId} {
       allow read: if isParent() || isStudent(studentId);

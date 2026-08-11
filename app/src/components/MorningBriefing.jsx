@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { todayISO } from '../lib/assignments';
@@ -34,9 +35,6 @@ export default function MorningBriefing({ students, byStudent, order, reviewCoun
   }
 
   const needsYou = [];
-  for (const g of lowScores) {
-    needsYou.push(`⚠️ ${students?.[g.studentId]?.name ?? g.studentId} scored ${g.pct}% on ${g.title} — open the gradebook to see the work.`);
-  }
   if (dayInfo?.school && dayInfo.dow === 4) needsYou.push(`🎤 Day 4 — recitation day (Week ${dayInfo.week}). The recite screen is ready below.`);
   if (reviewCount > 0) needsYou.push(`👀 ${reviewCount} item${reviewCount > 1 ? 's' : ''} in "Needs your eyes."`);
   for (const id of order) {
@@ -83,6 +81,46 @@ export default function MorningBriefing({ students, byStudent, order, reviewCoun
           )}
         </>
       )}
+    </section>
+  );
+}
+
+// A rough score is the one thing that shouldn't wait for the evening report,
+// so it gets its own loud card at the top of the dashboard. Dismissed items
+// stay dismissed for the day only — tomorrow's misses speak up again.
+export function LowScoreAlert({ lowScores, students }) {
+  const dayKey = `lowdismiss:${todayISO()}`;
+  const [dismissed, setDismissed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(dayKey)) ?? []; } catch { return []; }
+  });
+
+  const showing = lowScores.filter((g) => !dismissed.includes(g.gradeId));
+  if (showing.length === 0) return null;
+
+  function dismiss(id) {
+    const next = [...dismissed, id];
+    localStorage.setItem(dayKey, JSON.stringify(next));
+    setDismissed(next);
+  }
+
+  return (
+    <section className="lowscore-alert">
+      <h2>⚠️ Worth looking at right now</h2>
+      {showing.map((g) => (
+        <div key={g.gradeId} className="lowscore-row">
+          <span className="lowscore-who">
+            {resolveTheme(g.studentId, students?.[g.studentId]?.theme).avatar}{' '}
+            <strong>{students?.[g.studentId]?.name ?? g.studentId}</strong> scored{' '}
+            <strong className="lowscore-pct">{g.pct}%</strong> on {g.title}
+          </span>
+          {g.summary && <p className="lowscore-why">🔍 {g.summary}</p>}
+          <span className="lowscore-actions">
+            <Link to="/records">👀 See the work</Link>
+            <button onClick={() => dismiss(g.gradeId)}>Got it</button>
+          </span>
+        </div>
+      ))}
+      <p className="lowscore-foot">A 5-minute clean-up on this is already on tomorrow's list.</p>
     </section>
   );
 }
@@ -176,7 +214,6 @@ export function FamilyQuest({ editable }) {
 
 // Email preferences: which automatic emails go out. Missing key = on.
 const EMAILS = [
-  ['lowScore', 'Tell me right away if something scores under 65%'],
   ['nightly', 'Nightly report (Mon–Thu 5:30pm)'],
   ['fridayWins', 'Friday wins email'],
   ['sundayPacket', 'Sunday printable packet'],

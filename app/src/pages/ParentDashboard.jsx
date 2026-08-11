@@ -19,7 +19,7 @@ import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
 import MemoryWork from '../components/MemoryWork';
 import RecitePanel from '../components/RecitePanel';
-import MorningBriefing, { FamilyQuest, EmailPrefs } from '../components/MorningBriefing';
+import MorningBriefing, { FamilyQuest, EmailPrefs, LowScoreAlert } from '../components/MorningBriefing';
 import { SweepPanel, WeekPreview, QuickAdd, EchoShelf } from '../components/PlanningTools';
 import { SearchBox } from '../components/AbiExtras';
 import SchoolCalendar from '../components/SchoolCalendar';
@@ -106,6 +106,8 @@ export default function ParentDashboard() {
         return score / g.maxScore < 0.65;
       })
       .map((g) => ({
+        gradeId: g.id,
+        summary: g.misunderstandingSummary ?? '',
         studentId: g.studentId,
         pct: Math.round(((g.overriddenScore ?? g.score) / g.maxScore) * 100),
         title: titles[g.assignmentId] ?? 'an assignment',
@@ -147,12 +149,13 @@ export default function ParentDashboard() {
         </div>
       </header>
 
+      <LowScoreAlert lowScores={lowScoresToday} students={students} />
+
       <MorningBriefing
         students={students}
         byStudent={byStudent}
         order={STUDENT_ORDER}
         reviewCount={reviewQueue.length}
-        lowScores={lowScoresToday}
       />
 
       <SearchBox students={students} grades={grades} />

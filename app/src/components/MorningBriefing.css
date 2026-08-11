@@ -179,3 +179,75 @@
   font-size: 0.95rem;
   cursor: pointer;
 }
+
+/* Low-score alert — loud, top of the dashboard, dismissible for the day */
+.lowscore-alert {
+  background: #fff1f1;
+  border: 2px solid #d9534f;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  animation: lowscore-in 0.35s ease;
+}
+
+@keyframes lowscore-in {
+  from { transform: translateY(-6px); opacity: 0; }
+}
+
+.lowscore-alert h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: #b3261e;
+}
+
+.lowscore-row {
+  border-top: 1px solid #f3cfcf;
+  padding: 8px 0 4px;
+}
+
+.lowscore-row:first-of-type { border-top: none; }
+
+.lowscore-who { font-size: 0.98rem; }
+
+.lowscore-pct {
+  color: #b3261e;
+  font-size: 1.05rem;
+}
+
+.lowscore-why {
+  margin: 4px 0 6px;
+  font-size: 0.9rem;
+  color: #555;
+  font-style: italic;
+}
+
+.lowscore-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.lowscore-actions a {
+  background: #d9534f;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.lowscore-actions button {
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.lowscore-foot {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #888;
+}
