@@ -18,7 +18,25 @@ const TYPE_LABELS = {
 // with a parent in person; reading, video, and audio just need a "done" tap.
 const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video', 'audio']);
 
-export default function AssignmentCard({ assignment, studentId, state, large, memoryWork }) {
+function clockLabel(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')}`;
+}
+
+// Gentle pacing nudge for the active item only: compares now against the
+// item's target start (with a 10-minute grace) — a goal, never a lock.
+function paceLine(targetMinutes, large) {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  if (nowMins < 8 * 60 + 30 || nowMins > 16 * 60) return null; // outside the school-day window
+  const diff = nowMins - targetMinutes;
+  if (diff <= 10) return large ? '🕘 Right on track!' : '🕘 Right on pace — nice!';
+  if (diff <= 40) return large ? '🕘 A little behind — keep going!' : '🕘 A bit behind pace — no stress, just keep moving!';
+  return large ? '🕘 Way behind — power time!' : '🕘 Behind pace — buckle down and you can still catch the day!';
+}
+
+export default function AssignmentCard({ assignment, studentId, state, large, memoryWork, targetMinutes }) {
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
 
@@ -38,6 +56,9 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
       <div className="assignment-header">
         <span className="assignment-type">{assignment.catchUp && state !== 'done' ? '⏰ ' : ''}{TYPE_LABELS[assignment.itemType] ?? assignment.itemType}</span>
         <span className="assignment-title">{assignment.title}</span>
+        {targetMinutes != null && state !== 'done' && (
+          <span className="assignment-target">🕘 {clockLabel(targetMinutes)}</span>
+        )}
         <span className="assignment-time">
           {state === 'done' ? '✅' : state === 'locked' ? '🔒' : `~${assignment.estimatedMinutes} min`}
         </span>
@@ -45,6 +66,9 @@ export default function AssignmentCard({ assignment, studentId, state, large, me
 
       {isActive && (
         <div className="assignment-body">
+          {targetMinutes != null && paceLine(targetMinutes, large) && (
+            <p className="pace-line">{paceLine(targetMinutes, large)}</p>
+          )}
           {assignment.instructions && (
             <p className="assignment-instructions">
               {assignment.instructions}

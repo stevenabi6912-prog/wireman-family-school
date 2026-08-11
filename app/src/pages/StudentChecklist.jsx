@@ -111,6 +111,20 @@ export default function StudentChecklist() {
   }, [combined]);
   const catchUpLeft = combined?.filter((a) => a.catchUp && !DONE_STATUSES.has(a.status)).length ?? 0;
 
+  // ---- pacing guide: the family plan starts school at 8:30. Each item gets
+  // a target clock time (8:30 + the estimates of everything before it) so the
+  // kids always know roughly where they should be in the day. ----
+  const SCHOOL_START = 8 * 60 + 30;
+  const targets = useMemo(() => {
+    if (!combined) return [];
+    let t = SCHOOL_START;
+    return combined.map((a) => {
+      const start = t;
+      t += a.estimatedMinutes ?? 20;
+      return start;
+    });
+  }, [combined]);
+
   const total = combined?.length ?? 0;
   const allDone = total > 0 && activeIndex === -1;
 
@@ -321,6 +335,7 @@ export default function StudentChecklist() {
                   studentId={studentId}
                   large={large}
                   memoryWork={student?.memoryWork}
+                  targetMinutes={targets[i]}
                   state={DONE_STATUSES.has(a.status) ? 'done' : i === activeIndex ? 'active' : 'locked'}
                 />
               ))}

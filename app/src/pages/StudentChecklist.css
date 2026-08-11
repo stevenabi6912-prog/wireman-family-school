@@ -504,3 +504,28 @@
   max-width: 480px;
   margin: 8px 0;
 }
+
+/* Pacing guide: target start time per item + on-pace nudge on the active card */
+.assignment-target {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--t-accent, #6c5ce7);
+  white-space: nowrap;
+  margin-right: 8px;
+  opacity: 0.85;
+}
+
+.checklist-large .assignment-target {
+  font-size: 1.05rem;
+}
+
+.pace-line {
+  margin: 0 0 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--t-accent, #6c5ce7);
+}
+
+.checklist-large .pace-line {
+  font-size: 1.1rem;
+}
