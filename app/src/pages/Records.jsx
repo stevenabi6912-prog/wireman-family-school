@@ -7,10 +7,10 @@ import { gradePct, computeAverages, gradesToCSV } from '../lib/grades';
 import './Records.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
-const SUBJECTS = ['bible', 'math', 'ela', 'history', 'science', 'writing'];
+const SUBJECTS = ['bible', 'math', 'ela', 'history', 'science', 'writing', 'spanish'];
 const SUBJECT_NAMES = {
   bible: 'Bible', math: 'Math', ela: 'Grammar & Writing',
-  history: 'History', science: 'Science', writing: 'Writing',
+  history: 'History', science: 'Science', writing: 'Writing', spanish: 'Spanish',
 };
 
 export default function Records() {
@@ -135,6 +135,7 @@ export default function Records() {
                   ['Medieval History', 'Story of the World Vol. 2', 'history'],
                   ['Earth Science', 'Elemental Science (Logic Stage)', 'science'],
                   ['Bible', 'Answers in Genesis', 'bible'],
+                  ['Spanish 1', 'Flip Flop Spanish — Sí Sí Level 1', 'spanish'],
                 ].map(([course, curric, subj]) => (
                   <tr key={course}>
                     <td>{course}</td>
