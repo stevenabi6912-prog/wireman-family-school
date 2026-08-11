@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { todayISO } from '../lib/assignments';
-import { currentMemoryWeek, fetchMemoryItems } from '../lib/memory';
+import {
+  currentMemoryWeek, cachedMemoryWeek, fetchMemoryItems, itemAppliesTo, itemsForWeek,
+  pieceTextFor, TRACKS_FOR_SUBJECT, TRACK_META,
+} from '../lib/memory';
 import { grantBreak } from '../lib/breaks';
 import { playDing, playFanfare } from '../lib/sounds';
 import { resolveTheme } from '../config/themes';
@@ -32,6 +35,81 @@ export function VerseOfDay({ large }) {
       ) : (
         <p className="verse-text verse-ref-only">{verse.reference}</p>
       )}
+    </div>
+  );
+}
+
+// ---- Warm-up: 3 minutes of THIS subject's memory work before the lesson ----
+// Abi's call — memory work belongs at the front of each subject, not parked in
+// a tab at the end of the day.
+const WARM_SECONDS = 180;
+
+export function SubjectWarmUp({ subjectId, studentId, large }) {
+  const tracks = TRACKS_FOR_SUBJECT[subjectId];
+  const dayKey = `warm:${studentId}:${subjectId}:${todayISO()}`;
+  const [done, setDone] = useState(() => localStorage.getItem(dayKey) === '1');
+  const [items, setItems] = useState(null);
+  const [left, setLeft] = useState(null); // countdown, null = not started
+
+  useEffect(() => {
+    if (!tracks || done) return;
+    (async () => {
+      try {
+        const [wk, all] = await Promise.all([cachedMemoryWeek(), fetchMemoryItems()]);
+        const mine = itemsForWeek(all, wk.week).filter(
+          (it) => tracks.includes(it.track) && itemAppliesTo(it, studentId)
+        );
+        setItems(mine);
+      } catch {
+        setItems([]);
+      }
+    })();
+  }, [subjectId, studentId, done]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (left === null) return;
+    if (left <= 0) return;
+    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+
+  function finish() {
+    localStorage.setItem(dayKey, '1');
+    setDone(true);
+    playDing();
+  }
+
+  if (!tracks || done || items === null || items.length === 0) return null;
+
+  return (
+    <div className="warmup-box">
+      <div className="warmup-head">
+        <strong>🧠 {large ? 'Practice first!' : 'Warm-up — 3 minutes of memory work'}</strong>
+        {left === null ? (
+          <button className="warmup-timer-btn" onClick={() => setLeft(WARM_SECONDS)}>Start timer</button>
+        ) : (
+          <span className={`warmup-timer ${left <= 0 ? 'warmup-timer-done' : ''}`}>
+            {left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : "Time's up — nice work!"}
+          </span>
+        )}
+      </div>
+      <ul className="warmup-list">
+        {items.map((it) => (
+          <li key={it.id}>
+            <span className="warmup-emoji">{TRACK_META[it.track]?.emoji ?? '•'}</span>
+            <span>
+              <strong>{it.title}</strong>
+              {it.reference && <em> — {it.reference}</em>}
+              {(it.text || (it.isUnitPiece && pieceTextFor(it, studentId))) && (
+                <span className="warmup-text">{it.text || pieceTextFor(it, studentId)}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button className="warmup-done" onClick={finish}>
+        ✓ {large ? 'I practiced it!' : 'Practiced — start the lesson'}
+      </button>
     </div>
   );
 }

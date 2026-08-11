@@ -203,3 +203,78 @@
 .streak-buddy {
   background: linear-gradient(90deg, #e8f8e8, #fff8dc) !important;
 }
+
+/* Subject warm-up (memory work before the lesson) */
+.warmup-box {
+  background: color-mix(in srgb, var(--t-accent-soft, #dcd6f7) 45%, #fff);
+  border: 2px solid var(--t-accent, #6c5ce7);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.warmup-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.warmup-timer-btn,
+.warmup-done {
+  border: 2px solid var(--t-accent, #6c5ce7);
+  background: #fff;
+  color: var(--t-accent, #6c5ce7);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.warmup-done {
+  background: var(--t-accent, #6c5ce7);
+  color: #fff;
+  margin-top: 6px;
+  padding: 7px 16px;
+  font-size: 0.9rem;
+}
+
+.checklist-large .warmup-done { font-size: 1.05rem; padding: 9px 20px; }
+
+.warmup-timer {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-accent, #6c5ce7);
+}
+
+.warmup-timer-done { color: #2e7d32; }
+
+.warmup-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.warmup-list li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.92rem;
+}
+
+.checklist-large .warmup-list li { font-size: 1.05rem; }
+
+.warmup-list em { font-style: normal; opacity: 0.75; }
+
+.warmup-text {
+  display: block;
+  font-style: italic;
+  opacity: 0.9;
+  margin-top: 2px;
+}

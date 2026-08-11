@@ -3,7 +3,7 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
-import { MathSprint } from './KidExtras';
+import { MathSprint, SubjectWarmUp } from './KidExtras';
 import { markStarted, completeAssignment, resolveContentUrl, undoCompletion } from '../lib/assignments';
 import { reopenAssignment } from '../lib/parentData';
 
@@ -20,8 +20,10 @@ const TYPE_LABELS = {
 };
 
 // Checkoff-only types have no typed submission: Bible and memorization are done
-// with a parent in person; reading, video, and audio just need a "done" tap.
-const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'video', 'audio', 'task']);
+// with a parent in person; reading, audio, and Mom's extras just need a tap.
+// 'video' is NOT here — Math-U-See lessons pair the video with Practice A, and
+// the instructions ask for a photo, so those need the upload form.
+const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'audio', 'task']);
 
 function clockLabel(mins) {
   const h = Math.floor(mins / 60);
@@ -108,6 +110,8 @@ export default function AssignmentCard({
 
       {isActive && (
         <div className="assignment-body">
+          <SubjectWarmUp subjectId={assignment.subjectId} studentId={studentId} large={large} />
+
           {targetMinutes != null && paceLine(targetMinutes, large) && (
             <p className="pace-line">{paceLine(targetMinutes, large)}</p>
           )}
@@ -139,15 +143,14 @@ export default function AssignmentCard({
             </p>
           )}
 
-          {assignment.itemType === 'video' && (
-            assignment.externalUrl ? (
-              <a className="video-link" href={assignment.externalUrl} target="_blank" rel="noreferrer">
-                ▶ Open your math lesson
-              </a>
-            ) : (
-              <p className="video-placeholder">Your math video link is coming soon — ask Mom which lesson to watch.</p>
-            )
-          )}
+          {/* Any item with a site to visit gets its button, whatever its type. */}
+          {assignment.externalUrl ? (
+            <a className="video-link" href={assignment.externalUrl} target="_blank" rel="noreferrer">
+              ▶ Open your math lesson
+            </a>
+          ) : assignment.itemType === 'video' ? (
+            <p className="video-placeholder">Your math video link is coming soon — ask Mom which lesson to watch.</p>
+          ) : null}
 
           <ChapterAudio assignment={assignment} />
 
@@ -161,7 +164,7 @@ export default function AssignmentCard({
           {assignment.contentPath && (
             assignment.contentPath.endsWith('.mp3')
               ? <LessonAudio path={assignment.contentPath} large={large} />
-              : <PdfViewer contentPath={assignment.contentPath} />
+              : <PdfViewer contentPath={assignment.contentPath} studentId={studentId} />
           )}
 
           {assignment.itemType === 'audio' && (

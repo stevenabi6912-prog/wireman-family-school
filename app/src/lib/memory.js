@@ -43,10 +43,34 @@ export async function currentMemoryWeek() {
   };
 }
 
+// Cached for the page's lifetime: the warm-up panel on every subject card
+// asks for these, and the plan doesn't change mid-morning.
+let itemsCache = null;
+let weekCache = null;
+
 export async function fetchMemoryItems() {
+  if (itemsCache) return itemsCache;
   const snap = await getDocs(collection(db, 'memoryItems'));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  itemsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return itemsCache;
 }
+
+export async function cachedMemoryWeek() {
+  if (!weekCache) weekCache = await currentMemoryWeek();
+  return weekCache;
+}
+
+// Which memory tracks belong to each subject, so the warm-up before a lesson
+// is about THAT lesson. Math has its own fact sprint on top of this.
+export const TRACKS_FOR_SUBJECT = {
+  bible: ['bible'],
+  history: ['history'],
+  science: ['science'],
+  ela: ['grammar', 'spelling'],
+  writing: ['grammar'],
+  spanish: ['spanish'],
+  math: ['math'],
+};
 
 export async function fetchMemoryAttempts() {
   const snap = await getDocs(collection(db, 'memoryAttempts'));
