@@ -1,9 +1,12 @@
 // Adds Flip Flop Spanish as a DAILY curriculum subject for all four kids
-// (Abi's call: separate from electives/memory work). One audio lesson per
-// school day, same lesson for the whole family, in order:
-//   days 1-128:  Sí Sí Level 1, CD 1-4 in track order
-//   days 129-143: El Puente (bridge audio) 1-15
-//   days 144-150: repaso — replay Sí Sí CD 1 tracks 1-7 (hear how far you've come)
+// (Abi's call: separate from electives/memory work), WEEK-ALIGNED with the
+// memory & recitation plan: week N's audio backs week N's recitation topic.
+//   - The 128 Sí Sí tracks are split across the 36 memory weeks in CD order
+//     (weeks 1-16 get 3 tracks, weeks 17-36 get 4 — gentle start, then ramp).
+//   - Days 1-3 of a week introduce that week's tracks; Day 4 replays the
+//     week's first track as repaso and sends them to recite for Mom.
+//   - The 6 days past week 36 (days 145-150) close the year with El Puente
+//     bridge tracks 1-6; the full Puente set stays on the memory-work shelf.
 // Idempotent: doc ids are {kid}-spanish-d{NNN}; re-running overwrites cleanly.
 // Run: GOOGLE_APPLICATION_CREDENTIALS=./serviceAccount.json node scripts/add-spanish-daily.js
 
@@ -17,7 +20,10 @@ const KIDS = ['luke', 'layla', 'logan', 'lazarus'];
 const DAYS = 150;
 
 function trackNum(path) {
-  return Number(path.match(/(\d+)_?\.mp3$/)?.[1] ?? 0);
+  // "seesay-cd1-track31-1.mp3" is track 31 (a re-export suffix), so read the
+  // number right after "track"/"puente", never the last digits before .mp3.
+  const m = path.match(/track(\d+)/) ?? path.match(/el_puente_(\d+)/);
+  return Number(m?.[1] ?? 0);
 }
 
 async function main() {
@@ -32,17 +38,34 @@ async function main() {
     });
   const bridge = mp3s.filter((n) => n.includes('bridge-audio')).sort((a, b) => trackNum(a) - trackNum(b));
 
+  const label = (p) => `Sí Sí CD ${p.match(/cd(\d+)/)[1]}, Track ${trackNum(p)}`;
+
+  // Split the Sí Sí tracks into the 36 memory-plan weeks, in order.
+  const weekTracks = [];
+  let cursor = 0;
+  for (let w = 1; w <= 36; w++) {
+    const take = w <= 16 ? 3 : 4; // 16*3 + 20*4 = 128
+    weekTracks.push(sisi.slice(cursor, cursor + take));
+    cursor += take;
+  }
+
   const lessons = [];
-  for (const p of sisi) {
-    const cd = p.match(/cd(\d+)/)[1];
-    lessons.push({ path: p, title: `Spanish — Sí Sí CD ${cd}, Track ${trackNum(p)}` });
-  }
-  for (const p of bridge) {
-    lessons.push({ path: p, title: `Spanish — El Puente, Track ${trackNum(p)}` });
-  }
-  while (lessons.length < DAYS) {
-    const src = lessons[lessons.length - sisi.length - bridge.length]; // CD 1 openers
-    lessons.push({ path: src.path, title: `Spanish repaso — ${src.title.replace('Spanish — ', '')}`, review: true });
+  for (let day = 1; day <= DAYS; day++) {
+    const week = Math.ceil(day / 4);
+    const dow = ((day - 1) % 4) + 1;
+    if (week <= 36) {
+      const tracks = weekTracks[week - 1];
+      if (dow === 4 || dow > tracks.length) {
+        // Day 4 (and the spare day of 3-track weeks): repaso + recite
+        const src = tracks[dow === 4 ? 0 : tracks.length - 1];
+        lessons.push({ path: src, title: `Spanish repaso (Week ${week}) — ${label(src)}`, review: true });
+      } else {
+        lessons.push({ path: tracks[dow - 1], title: `Spanish (Week ${week}) — ${label(tracks[dow - 1])}` });
+      }
+    } else {
+      const p = bridge[(day - 145) % bridge.length];
+      lessons.push({ path: p, title: `Spanish finale — El Puente, Track ${trackNum(p)}` });
+    }
   }
 
   const family = (await db.doc('families/wireman').get()).data();
@@ -69,7 +92,7 @@ async function main() {
         keyPath: null,
         externalUrl: null,
         instructions: lesson.review
-          ? 'Repaso! Replay this early lesson and notice how easy it sounds now. Say every phrase out loud with the audio.'
+          ? 'Repaso day! Replay this week\'s Spanish and say it all out loud — then show off this week\'s Spanish to Mom at recitation time. 🎤'
           : 'Play today\'s Spanish lesson and say every phrase OUT LOUD with the audio. Flip Flop only works if your mouth moves!',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -86,8 +109,8 @@ async function main() {
     gradable: false,
   });
 
-  console.log(`Spanish daily plan: ${DAYS} days x ${KIDS.length} kids = ${DAYS * KIDS.length} assignments (${sisi.length} Sí Sí + ${bridge.length} El Puente + ${DAYS - sisi.length - bridge.length} repaso).`);
-  console.log(`Day 1 lesson: ${lessons[0].title} -> ${cal[0]}`);
+  console.log(`Spanish daily plan: ${DAYS} days x ${KIDS.length} kids = ${DAYS * KIDS.length} assignments, week-aligned with the memory plan (${sisi.length} Sí Sí tracks over 36 weeks + El Puente finale).`);
+  console.log(`Day 1: ${lessons[0].title} | Day 4: ${lessons[3].title} | Day 5: ${lessons[4].title} | Day 145: ${lessons[144].title}`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
