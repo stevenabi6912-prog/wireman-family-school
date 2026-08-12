@@ -156,6 +156,31 @@ function detroitTomorrowIso() {
   return d.toLocaleDateString('sv-SE'); // YYYY-MM-DD
 }
 
+// The real next SCHOOL day, not just tomorrow's date on the wall calendar —
+// mirrors app/src/lib/calendar.js's buildCalendar predicate exactly. Without
+// this, a clean-up graded right before a gap (early-start days, a blockout, a
+// holiday) lands on a day with no school at all and never gets reached.
+async function nextSchoolDayAfter(db, fromIsoExclusive) {
+  const famSnap = await db.doc('families/wireman').get();
+  const fam = famSnap.exists ? famSnap.data() : null;
+  if (!fam) return detroitTomorrowIso(); // no calendar on file — fall back rather than throw
+
+  const { schoolYearStart, schoolDays = [], holidays = [], blockouts = [], extraDays = [] } = fam;
+  const inAnyRange = (iso, ranges) => (ranges ?? []).some((r) => iso >= r.start && iso <= r.end);
+
+  const d = new Date(fromIsoExclusive + 'T12:00:00');
+  for (let i = 0; i < 60; i++) { // 60-day safety cap — well past any real gap
+    d.setDate(d.getDate() + 1);
+    const iso = d.toLocaleDateString('sv-SE');
+    const isoWeekday = ((d.getDay() + 6) % 7) + 1; // Mon=1..Sun=7
+    const isSchoolDay =
+      extraDays.includes(iso) ||
+      (iso >= schoolYearStart && schoolDays.includes(isoWeekday) && !inAnyRange(iso, holidays) && !inAnyRange(iso, blockouts));
+    if (isSchoolDay) return iso;
+  }
+  return detroitTomorrowIso(); // shouldn't happen — same fallback rather than throw
+}
+
 // One text-only Claude call; returns the concatenated text blocks.
 async function askClaudeShort(prompt) {
   const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
@@ -226,11 +251,11 @@ async function addReviewCard({ db, student, studentId, assignment, assignmentId,
 async function scheduleCleanupItem({ db, student, studentId, assignment, assignmentId, result }) {
   if (assignment.cleanupFor) return; // never chain a clean-up off a clean-up
 
-  const tomorrow = detroitTomorrowIso();
+  const nextDay = await nextSchoolDayAfter(db, isoToday());
   // Deterministic id doubles as the "already scheduled?" check and enforces
-  // max one clean-up per kid per day (Firestore can't query != on a missing
-  // cleanupFor field).
-  const cleanupRef = db.doc(`assignments/${studentId}-cleanup-${tomorrow}`);
+  // max one clean-up per kid per real school day (Firestore can't query !=
+  // on a missing cleanupFor field).
+  const cleanupRef = db.doc(`assignments/${studentId}-cleanup-${nextDay}`);
   if ((await cleanupRef.get()).exists) return;
 
   const grade = student.grade ?? FOLLOWUP_GRADE_FALLBACK[studentId] ?? 5;
@@ -254,8 +279,8 @@ async function scheduleCleanupItem({ db, student, studentId, assignment, assignm
   // create() (not set) so a concurrent grading run can't double-write.
   await cleanupRef.create({
     studentId,
-    scheduledDate: tomorrow,
-    originalDate: tomorrow,
+    scheduledDate: nextDay,
+    originalDate: nextDay,
     sequence: 45,
     status: 'not_started',
     waivedReason: null,
