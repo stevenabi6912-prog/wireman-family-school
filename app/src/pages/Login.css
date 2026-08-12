@@ -151,3 +151,9 @@
   color: #c0392b;
   font-size: 1.1rem;
 }
+
+.login-hint {
+  margin-top: 18px;
+  font-size: 0.85rem;
+  color: #999;
+}

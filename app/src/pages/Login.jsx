@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { STUDENTS, PARENTS } from '../config/students';
@@ -20,6 +20,33 @@ export default function Login() {
   // RequireRole). Only Abi is sent onward — a kid always lands on their day.
   const from = typeof location.state?.from === 'string' ? location.state.from : null;
   const landing = (isParent) => (isParent ? from ?? '/dashboard' : '/today');
+
+  // Type the PIN instead of tapping it — on a laptop the keypad is slower than
+  // the keyboard already under your hands. Re-bound whenever the PIN changes so
+  // the handler never closes over a stale one.
+  useEffect(() => {
+    if (!selected) return undefined;
+
+    function onKeyDown(e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return; // leave browser shortcuts alone
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        pressDigit(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault(); // some browsers treat this as "go back"
+        if (!submitting) backspace();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const need = selected.isParent ? PARENT_MIN_PIN_LENGTH : STUDENT_PIN_LENGTH;
+        if (!submitting && pin.length >= need) attemptLogin(pin);
+      } else if (e.key === 'Escape') {
+        backToCards();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 
   // Already signed in (session persisted) — skip the login screen entirely.
   if (!loading && user && role) {
@@ -64,6 +91,7 @@ export default function Login() {
   function backspace() {
     setPin((p) => p.slice(0, -1));
   }
+
 
   if (!selected) {
     return (
@@ -138,6 +166,10 @@ export default function Login() {
         )}
       </div>
       {error && <p className="login-error">That PIN didn't work — try again.</p>}
+      <p className="login-hint">
+        Tap the buttons or just type it
+        {selected.isParent ? ' — Enter to sign in.' : '.'}
+      </p>
     </div>
   );
 }
