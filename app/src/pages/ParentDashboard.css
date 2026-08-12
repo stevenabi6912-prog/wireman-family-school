@@ -218,11 +218,11 @@
 }
 
 /* struggle flags */
-.struggle-section, .review-section {
+.struggle-section, .review-section, .games-section {
   margin-top: 2rem;
 }
 
-.struggle-section h2, .review-section h2 {
+.struggle-section h2, .review-section h2, .games-section h2 {
   font-size: 1.25rem;
   color: #2a2a2a;
   margin-bottom: 0.75rem;
@@ -419,4 +419,17 @@
 .student-card-clickable:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+/* Game table: the grown-up's side of the kids' versus games */
+.games-section .vs-wrap {
+  background: white;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+}
+
+.dash-games-chip {
+  background: #fff4d6;
+  border-color: #e6c86a;
+  font-weight: 700;
 }

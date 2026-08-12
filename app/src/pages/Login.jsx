@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { STUDENTS, PARENT } from '../config/students';
+import { STUDENTS, PARENTS } from '../config/students';
 import './Login.css';
 
 const STUDENT_PIN_LENGTH = 6;
@@ -83,14 +83,19 @@ export default function Login() {
           ))}
         </div>
         <div className="parent-divider" />
-        <button
-          className="name-card parent-card"
-          style={{ '--card-color': PARENT.color }}
-          onClick={() => selectCard(PARENT, true)}
-        >
-          <span className="name-card-avatar">{PARENT.emoji}</span>
-          <span className="name-card-name">{PARENT.name} (Parent)</span>
-        </button>
+        <div className="card-grid">
+          {PARENTS.map((p) => (
+            <button
+              key={p.id}
+              className="name-card parent-card"
+              style={{ '--card-color': p.color }}
+              onClick={() => selectCard(p, true)}
+            >
+              <span className="name-card-avatar">{p.emoji}</span>
+              <span className="name-card-name">{p.name} ({p.shortName})</span>
+            </button>
+          ))}
+        </div>
       </div>
     );
   }

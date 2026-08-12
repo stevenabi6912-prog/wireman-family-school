@@ -56,7 +56,7 @@ export default function BreakRoom({ studentId, large, onClose, initialGame = nul
             <button onClick={() => setGame('trivia')}>🏰 Castle Trivia</button>
             <button onClick={() => setGame('typing')}>⌨️ Typing Sprint</button>
             <button className="break-versus" onClick={() => setGame('versus')}>
-              ⚔️ Play a sibling{myTurnCount > 0 && <span className="break-turnbadge">{myTurnCount}</span>}
+              ⚔️ Play someone{myTurnCount > 0 && <span className="break-turnbadge">{myTurnCount}</span>}
             </button>
           </div>
         ) : (

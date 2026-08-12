@@ -379,7 +379,7 @@ export default function StudentChecklist() {
           />
           <ExplorerClub large={large} />
           <button className="versus-btn" onClick={() => openBreak('versus')}>
-            ⚔️ {large ? 'Play a game with someone!' : 'Play a sibling'}
+            ⚔️ {large ? 'Play a game with someone!' : 'Play a sibling — or Mom or Dad'}
           </button>
         </div>
       ) : (
@@ -417,7 +417,7 @@ export default function StudentChecklist() {
               {/* Finishing must not lock them out of a sibling game, or the
                   other kid's match would sit waiting forever. */}
               <button className="versus-btn" onClick={() => openBreak('versus')}>
-                ⚔️ {large ? 'Play a game with someone!' : 'Play a sibling'}
+                ⚔️ {large ? 'Play a game with someone!' : 'Play a sibling — or Mom or Dad'}
               </button>
               <BonusRound
                 candidates={bonusCandidates}

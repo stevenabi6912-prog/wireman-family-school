@@ -13,10 +13,14 @@ import {
 import { initialPool, takeShot, ballColor, isStripe, remainingFor, TABLE } from '../lib/games/pool';
 import { playDing, playFanfare } from '../lib/sounds';
 import { resolveTheme } from '../config/themes';
+import { PEOPLE, displayName, isParentId } from '../config/students';
 import './VersusGames.css';
 
-const NAMES = { luke: 'Luke', layla: 'Layla', logan: 'Logan', lazarus: 'Lazarus' };
-const ALL_KIDS = ['luke', 'layla', 'logan', 'lazarus'];
+// Mom and Dad are opponents too, so the roster is the whole family — anyone
+// with a login can be challenged, and the games work the same either way.
+const ROSTER = Object.keys(PEOPLE);
+const NAMES = Object.fromEntries(ROSTER.map((id) => [id, displayName(id)]));
+const avatarOf = (id) => (isParentId(id) ? PEOPLE[id].emoji : resolveTheme(id).avatar);
 
 // ============================ Lobby ============================
 export default function VersusGames({ studentId, large }) {
@@ -96,16 +100,16 @@ export default function VersusGames({ studentId, large }) {
           ) : (
             <div className="vs-newgrid">
               <span className="vs-hint">Who do you want to play {GAME_TYPES[newType].label} against?</span>
-              {ALL_KIDS.filter((k) => k !== studentId).map((k) => (
+              {ROSTER.filter((k) => k !== studentId).map((k) => (
                 <button key={k} className="vs-newbtn" onClick={() => start(newType, k)}>
-                  {resolveTheme(k).avatar} {NAMES[k]}
+                  {avatarOf(k)} {NAMES[k]}
                 </button>
               ))}
               <button className="vs-cancel" onClick={() => setNewType(null)}>cancel</button>
             </div>
           )}
           {(games?.length ?? 0) === 0 && (
-            <p className="vs-hint">No games yet — start one above. Your sibling plays their turn on their next break!</p>
+            <p className="vs-hint">No games yet — start one above. Challenge a sibling, or take on Mom or Dad; they play their turn when they get a minute.</p>
           )}
         </>
       )}
@@ -118,7 +122,7 @@ function GameRow({ game, me, onOpen, yourTurn }) {
   const t = GAME_TYPES[game.type] ?? { emoji: '🎲', label: game.type };
   return (
     <button className={`vs-row ${yourTurn ? 'vs-row-turn' : ''}`} onClick={onOpen}>
-      <span className="vs-row-title">{t.emoji} vs {resolveTheme(them).avatar} {NAMES[them] ?? them}</span>
+      <span className="vs-row-title">{t.emoji} vs {avatarOf(them)} {NAMES[them] ?? them}</span>
       <span className="vs-row-meta">
         {game.status === 'over'
           ? (game.winner === me ? '🏆 You won!' : game.winner ? 'They won' : 'Draw')
@@ -144,7 +148,7 @@ function Banner({ game, studentId, statusLabel }) {
   return (
     <div className="vs-banner">
       <span className="vs-vs">
-        {resolveTheme(studentId).avatar} You vs {resolveTheme(them).avatar} {NAMES[them]}
+        {avatarOf(studentId)} You vs {avatarOf(them)} {NAMES[them]}
       </span>
       <span className={`vs-turn ${myTurn ? 'vs-turn-mine' : ''}`}>
         {game.status === 'over'

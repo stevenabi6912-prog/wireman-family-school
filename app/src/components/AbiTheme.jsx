@@ -4,14 +4,16 @@ import { db } from '../lib/firebase';
 import { PALETTES, AVATARS } from '../config/themes';
 import './ThemePicker.css';
 
-// Abi's version of "Make it mine" — stored on the family doc she owns.
-export default function AbiTheme({ current, onClose }) {
+// The grown-ups' version of "Make it mine" — stored per parent on the family
+// doc, so Mom and Dad don't overwrite each other's dashboard.
+export default function AbiTheme({ personId, current, onClose }) {
   const [local, setLocal] = useState(current);
 
   async function save(patch) {
     const next = { ...local, ...patch };
     setLocal(next);
-    await updateDoc(doc(db, 'families', 'wireman'), { parentTheme: next });
+    const field = personId ? `parentThemes.${personId}` : 'parentTheme';
+    await updateDoc(doc(db, 'families', 'wireman'), { [field]: next });
   }
 
   return (

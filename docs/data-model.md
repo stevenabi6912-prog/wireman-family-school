@@ -32,6 +32,11 @@ Blockouts and holidays are both "non-school day" ranges; blockouts are parent-ad
 holidays are seeded from the standard calendar. Both are used the same way by the
 scheduler: reflow, don't delete.
 
+Also merged onto this doc: `emailPrefs`, `pause`, `scoreboard`, the family quest,
+and `parentThemes: { abi: {...}, steven: {...} }` — each parent's own dashboard
+palette and avatar. (The older single `parentTheme` field is Abi's pre-Steven pick
+and is still read as her fallback.)
+
 ## `students/{studentId}`  (studentId = "luke" | "layla" | "logan" | "lazarus")
 
 ```
@@ -139,8 +144,13 @@ grade should go through `scoreLabel()` (app: `src/lib/grades.js`, functions:
 { role: "student", studentId: "layla" }
 { role: "student", studentId: "logan" }
 { role: "student", studentId: "lazarus" }
-{ role: "parent" }
+{ role: "parent" }                 // Abi and Steven — identical claims
 ```
+
+Both parents have the same `parent` role and the same access. A parent carries no
+`studentId` claim, so the app derives which parent is signed in from the login
+address (`abi@wireman.local` → `abi`); that id is what the versus games use as a
+player and what keys their dashboard theme.
 
 Auth uses synthetic emails (`luke@wireman.local`, etc.) with 6-digit PIN passwords;
 the synthetic email is never rendered in the UI, only used internally by Firebase Auth.
