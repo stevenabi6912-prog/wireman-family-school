@@ -22,8 +22,11 @@ export default function Login() {
   const landing = (isParent) => (isParent ? from ?? '/dashboard' : '/today');
 
   // Type the PIN instead of tapping it — on a laptop the keypad is slower than
-  // the keyboard already under your hands. Re-bound whenever the PIN changes so
-  // the handler never closes over a stale one.
+  // the keyboard already under your hands. The listener rebinds each render
+  // (no dep array) so Enter/Escape always see fresh `pin`/`submitting`; digit
+  // entry itself goes through pressDigit's functional setPin below, so two
+  // keydowns landing in the same tick (fast typing, key repeat) never clobber
+  // each other the way reading `pin` out of this closure would.
   useEffect(() => {
     if (!selected) return undefined;
 
@@ -34,7 +37,7 @@ export default function Login() {
         pressDigit(e.key);
       } else if (e.key === 'Backspace') {
         e.preventDefault(); // some browsers treat this as "go back"
-        if (!submitting) backspace();
+        backspace();
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const need = selected.isParent ? PARENT_MIN_PIN_LENGTH : STUDENT_PIN_LENGTH;
@@ -47,6 +50,16 @@ export default function Login() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
+
+  // Auto-submit for kids once the PIN reaches full length — driven by the
+  // committed `pin` state rather than a value threaded through the keypress
+  // handler, so it fires correctly no matter how those last digits arrived
+  // (clicks, keystrokes, or a burst of both).
+  useEffect(() => {
+    if (!selected || selected.isParent || submitting) return;
+    if (pin.length === STUDENT_PIN_LENGTH) attemptLogin(pin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, selected, submitting]);
 
   // Already signed in (session persisted) — skip the login screen entirely.
   if (!loading && user && role) {
@@ -81,14 +94,15 @@ export default function Login() {
   function pressDigit(d) {
     if (submitting) return;
     setError(false);
-    const nextPin = pin + d;
-    setPin(nextPin);
-    if (!selected.isParent && nextPin.length === STUDENT_PIN_LENGTH) {
-      attemptLogin(nextPin);
-    }
+    // Functional update: always builds on the latest committed PIN, so a
+    // digit that arrives before React has re-rendered (and this component's
+    // handlers refreshed) still lands in the right place instead of being
+    // silently overwritten.
+    setPin((prev) => (!selected.isParent && prev.length >= STUDENT_PIN_LENGTH ? prev : prev + d));
   }
 
   function backspace() {
+    if (submitting) return;
     setPin((p) => p.slice(0, -1));
   }
 
