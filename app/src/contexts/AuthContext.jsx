@@ -7,7 +7,7 @@ import {
   setPersistence,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { loginEmailFor } from '../config/students';
+import { loginEmailFor, idFromLoginEmail } from '../config/students';
 
 const AuthContext = createContext(null);
 
@@ -40,6 +40,9 @@ export function AuthProvider({ children }) {
     user,
     role: claims?.role ?? null, // 'student' | 'parent'
     studentId: claims?.studentId ?? null,
+    // Who is signed in, kid or parent — the id the versus games use as a
+    // player. Parents carry no studentId claim, so fall back to their login.
+    personId: claims?.studentId ?? idFromLoginEmail(user?.email),
     loading: user === undefined,
     loginWithPin,
     logout,

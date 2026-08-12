@@ -1,7 +1,7 @@
 # Wireman Family School Platform
 
-Homeschool platform for four students (Luke, Layla, Logan, Lazarus) and one parent
-(Abi). Static React frontend on GitHub Pages; Firestore, Auth, Storage, and Cloud
+Homeschool platform for four students (Luke, Layla, Logan, Lazarus) and both
+parents (Abi and Steven). Static React frontend on GitHub Pages; Firestore, Auth, Storage, and Cloud
 Functions on Firebase. See [docs/data-model.md](docs/data-model.md) for the schema
 and [content-inventory.md](content-inventory.md) (gitignored, local only) for what
 curriculum content exists so far.
@@ -33,14 +33,16 @@ firestore.rules, storage.rules, firebase.json, .firebaserc
    the repo root to publish the security rules.
 6. Set the Anthropic key as a Functions secret (never as a frontend env var):
    `firebase functions:secrets:set ANTHROPIC_API_KEY`
-7. Create the 5 family accounts (4 students + Abi) with custom claims:
+7. Create the 6 family accounts (4 students + Abi + Steven) with custom claims:
    ```
    LUKE_PIN=<6 digits> LAYLA_PIN=<6 digits> LOGAN_PIN=<6 digits> \
-   LAZARUS_PIN=<6 digits> ABI_PIN=<8+ digits> npm run seed:users
+   LAZARUS_PIN=<6 digits> ABI_PIN=<8+ digits> STEVEN_PIN=<8+ digits> npm run seed:users
    ```
    Pick real PINs yourself — don't paste them into chat with me (see CONTRIBUTING.md
    note on secrets). This only needs to be run once per environment (again against
-   the emulator suite for local dev, and again for the live project).
+   the emulator suite for local dev, and again for the live project). Accounts
+   whose PIN variable is unset are skipped, so adding one person later is just
+   `STEVEN_PIN=<8+ digits> npm run seed:users`.
 8. **Create the GitHub repo**, push this code, then enable **GitHub Pages**
    (Settings > Pages > Source: GitHub Actions) and add the six `VITE_FIREBASE_*`
    values as repository secrets (Settings > Secrets and variables > Actions) so

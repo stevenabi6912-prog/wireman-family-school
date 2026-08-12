@@ -26,6 +26,9 @@ import SchoolCalendar from '../components/SchoolCalendar';
 import BugReport from '../components/BugReport';
 import AbiTheme from '../components/AbiTheme';
 import { PALETTES } from '../config/themes';
+import { PEOPLE, PARENTS } from '../config/students';
+import VersusGames from '../components/VersusGames';
+import { watchMyGames } from '../lib/versus';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -38,7 +41,7 @@ function greeting() {
 }
 
 export default function ParentDashboard() {
-  const { logout } = useAuth();
+  const { logout, personId } = useAuth();
   const navigate = useNavigate();
   const { hash } = useLocation();
   const [students, setStudents] = useState(null);
@@ -49,6 +52,15 @@ export default function ParentDashboard() {
   const [grades, setGrades] = useState([]);
   const [calOpen, setCalOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [myGames, setMyGames] = useState([]);
+
+  // Games the kids have started against this parent — the badge is the only
+  // hint they'd get that someone is waiting on a move.
+  useEffect(() => {
+    if (!personId) return undefined;
+    return watchMyGames(personId, setMyGames);
+  }, [personId]);
+  const pendingMoves = myGames.filter((g) => g.status !== 'over' && g.turn === personId).length;
 
   useEffect(() => {
     const unsubA = watchAssignmentsThroughToday(setAssignments);
@@ -132,14 +144,19 @@ export default function ParentDashboard() {
     return <div className="loading-screen">Loading the family…</div>;
   }
 
-  const abiTheme = year?.family?.parentTheme ?? { palette: 'bubblegum', avatar: '☀️' };
-  const abiColors = PALETTES[abiTheme.palette] ?? PALETTES.bubblegum;
+  const me = PEOPLE[personId] ?? PARENTS[0];
+  // Each parent gets their own look. Abi's original pick lives on the legacy
+  // `parentTheme` field — keep honouring it until she picks again.
+  const myTheme = year?.family?.parentThemes?.[personId]
+    ?? (personId === 'abi' ? year?.family?.parentTheme : null)
+    ?? { palette: me.palette, avatar: me.emoji };
+  const myColors = PALETTES[myTheme.palette] ?? PALETTES.bubblegum;
 
   return (
-    <div className="dash-screen" style={{ '--a-bg': abiColors.bg, '--a-accent': abiColors.accent, background: abiColors.bg }}>
+    <div className="dash-screen" style={{ '--a-bg': myColors.bg, '--a-accent': myColors.accent, background: myColors.bg }}>
       <header className="dash-header">
         <div>
-          <h1>{greeting()}, Abi {abiTheme.avatar}</h1>
+          <h1>{greeting()}, {me.name} {myTheme.avatar}</h1>
           <p className="dash-date">
             {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
@@ -148,6 +165,14 @@ export default function ParentDashboard() {
           <button className="dash-logout" onClick={() => setThemeOpen(true)}>✨</button>
           <BugReport studentId={null} large={false} />
           <button className="dash-logout" onClick={() => setCalOpen(true)}>📅 Calendar</button>
+          {pendingMoves > 0 && (
+            <button
+              className="dash-logout dash-games-chip"
+              onClick={() => document.getElementById('game-table')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              🎲 {pendingMoves} {pendingMoves === 1 ? 'move' : 'moves'} waiting
+            </button>
+          )}
           {year?.projectedEnd && (
             <span className={`year-chip ${year.projectedEnd > year.targetEnd ? 'year-chip-behind' : ''}`}>
               Last day: <strong>{year.projectedEnd}</strong>
@@ -296,13 +321,22 @@ export default function ParentDashboard() {
 
       <MemoryWork students={students} order={STUDENT_ORDER} />
 
+      {/* The kids challenge Mom and Dad from their break room; this is where
+          the grown-up plays their turn back. */}
+      <section className="games-section" id="game-table">
+        <h2>Game table {pendingMoves > 0 && <span className="review-count">{pendingMoves}</span>}</h2>
+        {personId
+          ? <VersusGames studentId={personId} large={false} />
+          : <p className="struggle-empty">Couldn't tell which parent is signed in — sign out and back in to play.</p>}
+      </section>
+
       <EmailPrefs />
 
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
 
       {calOpen && <SchoolCalendar onClose={() => setCalOpen(false)} />}
       {themeOpen && (
-        <AbiTheme current={abiTheme} onClose={() => { setThemeOpen(false); refreshYear(); }} />
+        <AbiTheme personId={personId} current={myTheme} onClose={() => { setThemeOpen(false); refreshYear(); }} />
       )}
 
       <p className="records-link-row">
