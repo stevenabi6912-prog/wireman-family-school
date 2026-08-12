@@ -321,6 +321,12 @@
   padding: 0.45rem 0.6rem;
 }
 
+.review-outof-sep {
+  font-size: 0.85rem;
+  color: #666;
+  white-space: nowrap;
+}
+
 .review-actions button {
   border: 1px solid #ddd;
   background: #fafafa;

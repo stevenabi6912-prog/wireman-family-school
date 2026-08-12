@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { watchAllGrades, watchStudents } from './recordsData';
-import { gradePct, computeAverages, gradesToCSV } from '../lib/grades';
+import { gradePct, scoreLabel, computeAverages, gradesToCSV } from '../lib/grades';
 import { ReportCards, AffidavitButton } from '../components/AbiExtras';
 import WorkViewer from '../components/WorkViewer';
 import './Records.css';
@@ -143,11 +143,7 @@ export default function Records() {
                           <td>{g.gradedAt?.toDate?.()?.toLocaleDateString?.() ?? ''}</td>
                           <td>{SUBJECT_NAMES[g.subjectId] ?? g.subjectId}</td>
                           <td>{assignmentTitles[g.assignmentId] ?? g.assignmentId}</td>
-                          <td>
-                            {(g.overriddenScore ?? g.score) == null
-                              ? 'review'
-                              : `${g.overriddenScore ?? g.score}/${g.maxScore}${g.overriddenScore != null ? ' *' : ''}`}
-                          </td>
+                          <td>{scoreLabel(g)}</td>
                           <td>
                             {pct == null ? '—' : `${pct}%`}
                             {low && <span className="grade-low-chip">needs a look</span>}

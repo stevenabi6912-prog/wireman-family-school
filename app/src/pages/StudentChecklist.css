@@ -650,6 +650,38 @@
   white-space: nowrap;
 }
 
+/* Followed an email link to an item that isn't on this page */
+.focus-miss-bar {
+  background: #fff4d6;
+  border: 1px solid #e6c86a;
+  color: #6b5310;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 0.92rem;
+}
+
+.focus-miss-bar a {
+  color: #6b5310;
+  font-weight: 700;
+}
+
+/* The card an email link pointed at — pulses once, then settles */
+.assignment-focused {
+  outline: 3px solid var(--t-accent, #5b4b8a);
+  outline-offset: 2px;
+  animation: focus-pulse 1.6s ease-out 2;
+}
+
+@keyframes focus-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07); }
+  50% { box-shadow: 0 0 0 8px rgba(91, 75, 138, 0.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assignment-focused { animation: none; }
+}
+
 /* Reopen / undo a completed item */
 .reopen-row {
   display: flex;

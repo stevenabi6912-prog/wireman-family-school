@@ -124,6 +124,14 @@ on submit, which triggers the grading Cloud Function for gradable subjects.
 }
 ```
 
+Items with no answer key are written with `score: null, maxScore: null` and go
+to Abi's review queue instead of being auto-graded. When she scores one there,
+the review form asks for the "out of" too and writes `maxScore` alongside
+`overriddenScore` — without it the grade has no denominator, so it can't count
+toward an average and reads as a bare score everywhere. Anything rendering a
+grade should go through `scoreLabel()` (app: `src/lib/grades.js`, functions:
+`index.js`) rather than interpolating `score`/`maxScore` directly.
+
 ## `users/{uid}`  (Firebase Auth uid → role mapping)
 
 ```
