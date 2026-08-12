@@ -109,6 +109,17 @@ export default function ParentDashboard() {
     [byStudent]
   );
 
+  // "All caught up" is a lie if today's list still has open items sitting on
+  // it — say so in the SAME sentence instead of leaving a second card (the
+  // sweep) to look like it's contradicting this one.
+  const openToday = useMemo(
+    () => STUDENT_ORDER.reduce(
+      (n, id) => n + (byStudent[id]?.today.filter((a) => !DONE_STATUSES.has(a.status)).length ?? 0),
+      0
+    ),
+    [byStudent]
+  );
+
   const struggleFlags = useMemo(
     () => computeStruggleFlags({ grades, assignments: assignments ?? [] }),
     [grades, assignments]
@@ -250,7 +261,11 @@ export default function ParentDashboard() {
       <section className="missing-section">
         <h2>Missing work</h2>
         {allMissing.length === 0 ? (
-          <p className="missing-empty">✅ Nobody has missing work. All caught up!</p>
+          <p className="missing-empty">
+            {openToday > 0
+              ? `✅ Nothing overdue from earlier days. ${openToday} item${openToday === 1 ? ' is' : 's are'} still open on today's list, though — that's the end-of-day sweep below.`
+              : '✅ Nobody has missing work. All caught up!'}
+          </p>
         ) : (
           <ul className="missing-list">
             {allMissing.map((a) => {
