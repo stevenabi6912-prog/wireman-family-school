@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   GAME_TYPES, watchMyGames, createGame, saveGame, deleteGame, resignGame,
-  saveFleet, loadFleet,
+  saveFleet, loadFleet, awaitingMe,
 } from '../lib/versus';
 import { initialChess, legalMoves, applyMove, gameStatus, moveLabel, PIECE_GLYPH } from '../lib/games/chess';
 import {
@@ -115,18 +115,6 @@ export default function VersusGames({ studentId, large }) {
       )}
     </div>
   );
-}
-
-// Battleship's setup phase isn't turn-based — both players place their fleet
-// independently — so "your move" has to mean "you haven't locked yours in"
-// there, not "game.turn === you" (which defaults to player 1 and would tell
-// the WRONG person to act, or tell nobody anything useful, until both are in).
-function awaitingMe(game, studentId) {
-  if (game.status === 'over') return false;
-  if (game.type === 'battleship' && game.status === 'setup') {
-    return !game.state?.ready?.[studentId];
-  }
-  return game.turn === studentId;
 }
 
 function GameRow({ game, me, onOpen, awaiting }) {

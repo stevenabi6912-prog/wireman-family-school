@@ -15,6 +15,21 @@ export const GAME_TYPES = {
   pool: { label: '8-Ball Pool', emoji: '🎱' },
 };
 
+// Is this player the one who needs to act? Battleship's setup phase isn't
+// turn-based — both players place their fleet independently — so "my move"
+// has to mean "I haven't locked mine in yet" there, not "game.turn === me"
+// (which defaults to player 1 and would tell the WRONG person to act, or
+// nobody at all, until both are ready). Every place that counts or labels
+// pending moves must use this — a second copy of the old turn-only check
+// is exactly how this bug came back once already.
+export function awaitingMe(game, studentId) {
+  if (game.status === 'over') return false;
+  if (game.type === 'battleship' && game.status === 'setup') {
+    return !game.state?.ready?.[studentId];
+  }
+  return game.turn === studentId;
+}
+
 // Every match this kid is part of. Sorted newest-first on the client so we
 // don't need a composite index for a handful of docs.
 export function watchMyGames(studentId, callback) {

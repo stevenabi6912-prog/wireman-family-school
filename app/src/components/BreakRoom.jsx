@@ -4,7 +4,7 @@ import { db } from '../lib/firebase';
 import { BREAK_SECONDS, loadGame, saveGame } from '../lib/breaks';
 import { makeSudoku, makeWordSearch, WORD_THEMES, SCRAMBLES, TRIVIA, TYPING_WORDS } from './breakGames';
 import VersusGames from './VersusGames';
-import { watchMyGames } from '../lib/versus';
+import { watchMyGames, awaitingMe } from '../lib/versus';
 import { playDing, playFanfare } from '../lib/sounds';
 import './BreakRoom.css';
 
@@ -17,7 +17,7 @@ export default function BreakRoom({ studentId, large, onClose, initialGame = nul
   // Badge on the versus button so a waiting sibling game gets noticed.
   useEffect(
     () => watchMyGames(studentId, (games) =>
-      setMyTurnCount(games.filter((g) => g.status !== 'over' && g.turn === studentId).length)
+      setMyTurnCount(games.filter((g) => g.status !== 'over' && awaitingMe(g, studentId)).length)
     ),
     [studentId]
   );

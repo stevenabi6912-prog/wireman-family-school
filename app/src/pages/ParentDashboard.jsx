@@ -28,7 +28,7 @@ import AbiTheme from '../components/AbiTheme';
 import { PALETTES } from '../config/themes';
 import { PEOPLE, PARENTS } from '../config/students';
 import VersusGames from '../components/VersusGames';
-import { watchMyGames } from '../lib/versus';
+import { watchMyGames, awaitingMe } from '../lib/versus';
 import './ParentDashboard.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
@@ -60,7 +60,7 @@ export default function ParentDashboard() {
     if (!personId) return undefined;
     return watchMyGames(personId, setMyGames);
   }, [personId]);
-  const pendingMoves = myGames.filter((g) => g.status !== 'over' && g.turn === personId).length;
+  const pendingMoves = myGames.filter((g) => g.status !== 'over' && awaitingMe(g, personId)).length;
 
   useEffect(() => {
     const unsubA = watchAssignmentsThroughToday(setAssignments);
