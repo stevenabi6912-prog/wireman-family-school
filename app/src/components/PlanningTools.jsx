@@ -30,19 +30,32 @@ async function editNote(assignment) {
   return true;
 }
 
-// ---- End-of-day sweep: every unfinished item, one decision each, in bulk ----
+// ---- End-of-day sweep: decide what happens to whatever's left, in bulk ----
+// Two genuinely different things live here, and they're kept visually
+// separate so this never contradicts "Missing work" (which only counts
+// items dated BEFORE today) or a kid's "Day done" chip (which only checks
+// TODAY's list): items from an earlier day are actually late; items still
+// on today's list might just not be reached yet — nothing wrong with that
+// mid-afternoon, so they're never called "missing" or "unfinished" here.
 export function SweepPanel({ assignments, students }) {
   const [checked, setChecked] = useState({});
   const [open, setOpen] = useState(false);
+  const today = todayISO();
 
-  const unfinished = useMemo(
-    () => (assignments ?? []).filter((a) => !DONE_STATUSES.has(a.status))
+  const overdue = useMemo(
+    () => (assignments ?? []).filter((a) => !DONE_STATUSES.has(a.status) && a.scheduledDate < today)
       .sort((x, y) => x.studentId.localeCompare(y.studentId) || x.scheduledDate.localeCompare(y.scheduledDate)),
-    [assignments]
+    [assignments, today]
   );
+  const stillToday = useMemo(
+    () => (assignments ?? []).filter((a) => !DONE_STATUSES.has(a.status) && a.scheduledDate === today)
+      .sort((x, y) => x.studentId.localeCompare(y.studentId)),
+    [assignments, today]
+  );
+  const all = [...overdue, ...stillToday];
 
-  if (unfinished.length === 0) return null;
-  const chosen = unfinished.filter((a) => checked[a.id]);
+  if (all.length === 0) return null;
+  const chosen = all.filter((a) => checked[a.id]);
 
   async function bulk(action) {
     for (const a of chosen) {
@@ -52,35 +65,57 @@ export function SweepPanel({ assignments, students }) {
     setChecked({});
   }
 
+  function Group({ title, hint, items }) {
+    if (items.length === 0) return null;
+    return (
+      <>
+        <p className="sweep-group-title">{title}</p>
+        {hint && <p className="sweep-hint">{hint}</p>}
+        <ul className="sweep-list">
+          {items.map((a) => (
+            <li key={a.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!checked[a.id]}
+                  onChange={(e) => setChecked((c) => ({ ...c, [a.id]: e.target.checked }))}
+                />
+                {resolveTheme(a.studentId, students[a.studentId]?.theme).avatar} {a.title}
+                {a.scheduledDate < today && <em className="sweep-old"> ({a.scheduledDate})</em>}
+              </label>
+              <button className="note-btn" title="Note for the kid" onClick={() => editNote(a)}>📌</button>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
   return (
     <section className="sweep-card">
       <button className="sweep-toggle" onClick={() => setOpen((o) => !o)}>
-        🧹 End-of-day sweep — {unfinished.length} unfinished item{unfinished.length > 1 ? 's' : ''} {open ? '▾' : '▸'}
+        🧹 End-of-day sweep
+        {overdue.length > 0 && ` — ${overdue.length} past-due`}
+        {stillToday.length > 0 && ` · ${stillToday.length} still on today's list`}
+        {' '}{open ? '▾' : '▸'}
       </button>
       {open && (
         <>
           <p className="sweep-hint">
-            Check the stragglers, then push them all to tomorrow or waive them in one tap.
-            <button className="sweep-all" onClick={() => setChecked(Object.fromEntries(unfinished.map((a) => [a.id, true])))}>
+            Check anything you're making a call on, then push it to tomorrow or waive it in one tap.
+            <button className="sweep-all" onClick={() => setChecked(Object.fromEntries(all.map((a) => [a.id, true])))}>
               select all
             </button>
           </p>
-          <ul className="sweep-list">
-            {unfinished.map((a) => (
-              <li key={a.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={!!checked[a.id]}
-                    onChange={(e) => setChecked((c) => ({ ...c, [a.id]: e.target.checked }))}
-                  />
-                  {resolveTheme(a.studentId, students[a.studentId]?.theme).avatar} {a.title}
-                  {a.scheduledDate < todayISO() && <em className="sweep-old"> ({a.scheduledDate})</em>}
-                </label>
-                <button className="note-btn" title="Note for the kid" onClick={() => editNote(a)}>📌</button>
-              </li>
-            ))}
-          </ul>
+          <Group
+            title="⏰ From an earlier day (these are the ones counted as missing work)"
+            items={overdue}
+          />
+          <Group
+            title="📋 Still on today's list"
+            hint="Not late — just not reached yet. Only sweep these once you're sure they're not getting done today."
+            items={stillToday}
+          />
           {chosen.length > 0 && (
             <div className="sweep-actions">
               <button onClick={() => bulk('tomorrow')}>→ Push {chosen.length} to tomorrow</button>

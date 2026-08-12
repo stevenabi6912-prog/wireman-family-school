@@ -27,6 +27,19 @@
   margin: 6px 0;
 }
 
+.sweep-group-title {
+  margin: 14px 0 2px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sweep-group-title:first-of-type {
+  margin-top: 8px;
+}
+
 .sweep-all {
   border: none;
   background: none;
