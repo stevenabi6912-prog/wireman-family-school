@@ -40,8 +40,8 @@ export default function VersusGames({ studentId, large }) {
     );
   }
 
-  const yourTurn = (games ?? []).filter((g) => g.status !== 'over' && g.turn === studentId);
-  const waiting = (games ?? []).filter((g) => g.status !== 'over' && g.turn !== studentId);
+  const yourTurn = (games ?? []).filter((g) => g.status !== 'over' && awaitingMe(g, studentId));
+  const waiting = (games ?? []).filter((g) => g.status !== 'over' && !awaitingMe(g, studentId));
   const finished = (games ?? []).filter((g) => g.status === 'over').slice(0, 4);
 
   async function start(type, opponent) {
@@ -68,7 +68,7 @@ export default function VersusGames({ studentId, large }) {
             <>
               <h4 className="vs-heading">⚡ Your move!</h4>
               <div className="vs-list">
-                {yourTurn.map((g) => <GameRow key={g.id} game={g} me={studentId} onOpen={() => setOpenId(g.id)} yourTurn />)}
+                {yourTurn.map((g) => <GameRow key={g.id} game={g} me={studentId} onOpen={() => setOpenId(g.id)} awaiting />)}
               </div>
             </>
           )}
@@ -117,16 +117,31 @@ export default function VersusGames({ studentId, large }) {
   );
 }
 
-function GameRow({ game, me, onOpen, yourTurn }) {
+// Battleship's setup phase isn't turn-based — both players place their fleet
+// independently — so "your move" has to mean "you haven't locked yours in"
+// there, not "game.turn === you" (which defaults to player 1 and would tell
+// the WRONG person to act, or tell nobody anything useful, until both are in).
+function awaitingMe(game, studentId) {
+  if (game.status === 'over') return false;
+  if (game.type === 'battleship' && game.status === 'setup') {
+    return !game.state?.ready?.[studentId];
+  }
+  return game.turn === studentId;
+}
+
+function GameRow({ game, me, onOpen, awaiting }) {
   const them = game.players.find((p) => p !== me) ?? '?';
   const t = GAME_TYPES[game.type] ?? { emoji: '🎲', label: game.type };
+  const settingUp = game.type === 'battleship' && game.status === 'setup';
   return (
-    <button className={`vs-row ${yourTurn ? 'vs-row-turn' : ''}`} onClick={onOpen}>
+    <button className={`vs-row ${awaiting ? 'vs-row-turn' : ''}`} onClick={onOpen}>
       <span className="vs-row-title">{t.emoji} vs {avatarOf(them)} {NAMES[them] ?? them}</span>
       <span className="vs-row-meta">
         {game.status === 'over'
           ? (game.winner === me ? '🏆 You won!' : game.winner ? 'They won' : 'Draw')
-          : yourTurn ? 'Your move' : 'Waiting'}
+          : settingUp
+            ? (awaiting ? 'Place your fleet' : "Waiting on their fleet")
+            : awaiting ? 'Your move' : 'Waiting'}
       </span>
     </button>
   );
@@ -144,16 +159,19 @@ function GameBoard({ game, studentId, large, onFinished }) {
 // Shared header: who's who, whose turn, last move, resign/rematch.
 function Banner({ game, studentId, statusLabel }) {
   const them = game.players.find((p) => p !== studentId);
-  const myTurn = game.turn === studentId && game.status !== 'over';
+  const settingUp = game.type === 'battleship' && game.status === 'setup';
+  const awaiting = awaitingMe(game, studentId);
   return (
     <div className="vs-banner">
       <span className="vs-vs">
         {avatarOf(studentId)} You vs {avatarOf(them)} {NAMES[them]}
       </span>
-      <span className={`vs-turn ${myTurn ? 'vs-turn-mine' : ''}`}>
+      <span className={`vs-turn ${awaiting ? 'vs-turn-mine' : ''}`}>
         {game.status === 'over'
           ? (game.winner === studentId ? '🏆 You won!' : game.winner ? `${NAMES[them]} won` : 'Draw')
-          : myTurn ? '⚡ Your move' : `Waiting for ${NAMES[them]}`}
+          : settingUp
+            ? (awaiting ? '⚓ Place your fleet!' : `Waiting for ${NAMES[them]} to place their fleet`)
+            : awaiting ? '⚡ Your move' : `Waiting for ${NAMES[them]}`}
       </span>
       {statusLabel && <span className="vs-status">{statusLabel}</span>}
       {game.lastMove && <span className="vs-last">Last: {game.lastMove}</span>}
@@ -360,26 +378,33 @@ function BattleshipGame({ game, studentId, large }) {
     if (!pending || pending.by === me || !fleet || busy) return;
     (async () => {
       setBusy(true);
-      const result = resolveShot(fleet, pending.cell);
-      const theirs = [...theirShots, { cell: pending.cell, hit: result.hit }];
-      const sunk = sunkShips(fleet, theirs);
-      const lost = allSunk(fleet, theirs);
-      await saveGame(game.id, {
-        state: {
-          ...state,
-          [iAmA ? 'shotsB' : 'shotsA']: theirs.map((s, idx) =>
-            idx === theirs.length - 1
-              ? { ...s, sunk: result.hit && sunk.includes(result.ship) ? result.ship : '' }
-              : s
-          ),
-          pending: null,
-        },
-        turn: lost ? game.turn : me,
-        status: lost ? 'over' : 'active',
-        winner: lost ? them : null,
-        lastMove: `${NAMES[them]} fired at ${cellName(pending.cell)} — ${result.hit ? 'HIT!' : 'miss'}`,
-      });
-      setBusy(false);
+      try {
+        const result = resolveShot(fleet, pending.cell);
+        const theirs = [...theirShots, { cell: pending.cell, hit: result.hit }];
+        const sunk = sunkShips(fleet, theirs);
+        const lost = allSunk(fleet, theirs);
+        await saveGame(game.id, {
+          state: {
+            ...state,
+            [iAmA ? 'shotsB' : 'shotsA']: theirs.map((s, idx) =>
+              idx === theirs.length - 1
+                ? { ...s, sunk: result.hit && sunk.includes(result.ship) ? result.ship : '' }
+                : s
+            ),
+            pending: null,
+          },
+          turn: lost ? game.turn : me,
+          status: lost ? 'over' : 'active',
+          winner: lost ? them : null,
+          lastMove: `${NAMES[them]} fired at ${cellName(pending.cell)} — ${result.hit ? 'HIT!' : 'miss'}`,
+        });
+      } catch (err) {
+        // A dropped write here would otherwise leave `busy` stuck true forever —
+        // the pending shot never resolves and the game looks permanently frozen.
+        console.error('battleship shot resolution failed, will retry on next render:', err);
+      } finally {
+        setBusy(false);
+      }
     })();
   }, [state.pending, fleet]); // eslint-disable-line react-hooks/exhaustive-deps
 

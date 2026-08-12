@@ -122,6 +122,10 @@
 .chess-board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
+  /* Rows need pinning too — without this they auto-size to content, so a
+     square's height would shift depending on whether a piece (tall glyph)
+     or nothing sits in it, and the whole board visibly reflows every move. */
+  grid-template-rows: repeat(8, 1fr);
   width: min(92vw, 420px);
   aspect-ratio: 1;
   border: 3px solid #6b4b2a;
