@@ -494,6 +494,7 @@ function PoolGame({ game, studentId, large }) {
   const [angle, setAngle] = useState(0);
   const [power, setPower] = useState(0.6);
   const [anim, setAnim] = useState(null); // frames being played
+  const [locked, setLocked] = useState(false); // aim pinned by a click
 
   // The break can end mid-animation; don't leave a timer running behind us.
   useEffect(() => () => clearInterval(timerRef.current), []);
@@ -552,12 +553,12 @@ function PoolGame({ game, studentId, large }) {
       }
     }
 
-    // aim line from the cue ball
+    // aim line from the cue ball — solid yellow once locked, dashed white while previewing
     const cue = balls.find((b) => b.n === 0);
     if (myTurn && cue && !cue.in) {
-      g.strokeStyle = 'rgba(255,255,255,.85)';
-      g.lineWidth = 2;
-      g.setLineDash([6, 5]);
+      g.strokeStyle = locked ? 'rgba(255,214,64,.95)' : 'rgba(255,255,255,.85)';
+      g.lineWidth = locked ? 3 : 2;
+      if (!locked) g.setLineDash([6, 5]);
       g.beginPath();
       g.moveTo(cue.x * scale, cue.y * scale);
       g.lineTo((cue.x + Math.cos(angle) * 30 * power + 6 * Math.cos(angle)) * scale,
@@ -565,19 +566,43 @@ function PoolGame({ game, studentId, large }) {
       g.stroke();
       g.setLineDash([]);
     }
-  }, [balls, angle, power, myTurn]);
+  }, [balls, angle, power, myTurn, locked]);
 
-  // Aim by tapping/dragging anywhere on the felt.
-  function aimAt(e) {
-    if (!myTurn) return;
+  function angleAt(e) {
     const cv = canvasRef.current;
     const rect = cv.getBoundingClientRect();
     const p = e.touches?.[0] ?? e;
     const x = ((p.clientX - rect.left) / rect.width) * TABLE.w;
     const y = ((p.clientY - rect.top) / rect.height) * TABLE.h;
     const cue = state.balls.find((b) => b.n === 0);
-    if (!cue) return;
-    setAngle(Math.atan2(y - cue.y, x - cue.x));
+    return cue ? Math.atan2(y - cue.y, x - cue.x) : null;
+  }
+
+  // Hovering previews the aim; it used to keep tracking the mouse right up
+  // until you dragged off the table, which was the only way to hold it
+  // still. A click now locks the angle in place — click again to unlock and
+  // re-aim. Touch has no hover state, so dragging a finger always aims.
+  function previewAim(e) {
+    if (!myTurn || locked) return;
+    const a = angleAt(e);
+    if (a != null) setAngle(a);
+  }
+
+  function clickAim(e) {
+    if (!myTurn) return;
+    if (locked) {
+      setLocked(false);
+      return;
+    }
+    const a = angleAt(e);
+    if (a != null) setAngle(a);
+    setLocked(true);
+  }
+
+  function touchAim(e) {
+    if (!myTurn) return;
+    const a = angleAt(e);
+    if (a != null) setAngle(a);
   }
 
   // Roll the stored frames past the eye. Cosmetic only — the shot is already
@@ -603,6 +628,7 @@ function PoolGame({ game, studentId, large }) {
     // otherwise every shot would nest the whole history inside the doc.
     const { prev: _dropped, ...prev } = state;
     const { state: next, frames } = takeShot(state, angle, power);
+    setLocked(false); // next turn starts free-aiming again
     playDing();
     play(frames);
 
@@ -634,15 +660,18 @@ function PoolGame({ game, studentId, large }) {
       </p>
       <canvas
         ref={canvasRef}
-        className="pool-canvas"
+        className={`pool-canvas ${locked ? 'pool-canvas-locked' : ''}`}
         width={600}
         height={300}
-        onMouseMove={aimAt}
-        onClick={aimAt}
-        onTouchMove={aimAt}
+        onMouseMove={previewAim}
+        onClick={clickAim}
+        onTouchMove={touchAim}
       />
       {myTurn ? (
         <div className="pool-controls">
+          <span className="pool-lock-hint">
+            {locked ? '🔒 Aim locked — click the table to re-aim' : 'Move over the table to aim, click to lock it in'}
+          </span>
           <label>
             Power
             <input type="range" min="0.15" max="1" step="0.05" value={power} onChange={(e) => setPower(Number(e.target.value))} />
@@ -658,7 +687,7 @@ function PoolGame({ game, studentId, large }) {
           )}
         </div>
       )}
-      <p className="vs-hint">Move your finger (or mouse) over the table to aim, set the power, then shoot.</p>
+      <p className="vs-hint">On a touchscreen, drag your finger across the table to aim.</p>
       <EndActions game={game} studentId={studentId} />
     </div>
   );

@@ -236,6 +236,19 @@
   cursor: crosshair;
 }
 
+.pool-canvas-locked {
+  cursor: pointer;
+  border-color: #b8860b;
+}
+
+.pool-lock-hint {
+  width: 100%;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #666;
+}
+
 .pool-controls {
   display: flex;
   align-items: center;
