@@ -123,7 +123,11 @@ export default function AssignmentCard({
           )}
           {assignment.parentVoicePath && <MomSays path={assignment.parentVoicePath} />}
 
-          {assignment.subjectId === 'math' && assignment.itemType === 'video' && (
+          {/* Abi's plan: "2 min at the top of every math hour" — every math
+              session, not just the one day out of five with the video lesson.
+              Skip only the placement screener, which is its own careful,
+              one-time assessment. */}
+          {assignment.subjectId === 'math' && assignment.itemType !== 'test' && (
             <MathSprint studentId={studentId} grade={grade ?? 8} large={large} />
           )}
           {assignment.instructions && (
