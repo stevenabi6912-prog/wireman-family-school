@@ -27,6 +27,13 @@ export default function ReadingAssessment({ students, order }) {
 
   const needsResults = items.filter((a) => !a.readingResult).length;
 
+  // Patch the just-saved result into local state directly — this was fetched
+  // once with getDocs (not a live listener), so without this the row would
+  // show "not entered yet" even right after a successful save.
+  function applyResult(id, readingResult) {
+    setItems((prev) => prev.map((a) => (a.id === id ? { ...a, readingResult } : a)));
+  }
+
   return (
     <section className="reading-card">
       <button className="sweep-toggle" onClick={() => setOpen((o) => !o)}>
@@ -43,7 +50,7 @@ export default function ReadingAssessment({ students, order }) {
               student={students?.[a.studentId]}
               editing={editing === a.id}
               onEdit={() => setEditing(editing === a.id ? null : a.id)}
-              onSaved={() => setEditing(null)}
+              onSaved={(result) => { applyResult(a.id, result); setEditing(null); }}
             />
           ))}
         </div>
@@ -75,7 +82,9 @@ function ReadingRow({ assignment, student, editing, onEdit, onSaved }) {
     };
     await updateDoc(doc(db, 'assignments', assignment.id), { readingResult: result });
     setSaving(false);
-    onSaved();
+    // serverTimestamp() is a write-only sentinel, not a real value — swap in
+    // a local Date so the parent's in-memory copy stays renderable.
+    onSaved({ ...result, recordedAt: new Date() });
   }
 
   const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
