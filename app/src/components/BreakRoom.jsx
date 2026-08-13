@@ -8,8 +8,13 @@ import { watchMyGames } from '../lib/versus';
 import { playDing, playFanfare } from '../lib/sounds';
 import './BreakRoom.css';
 
-// 5-minute brain break: pick a game, timer runs, hard cutoff, progress saved.
-export default function BreakRoom({ studentId, large, onClose, initialGame = null }) {
+// Mid-day this is a 5-minute brain break: pick a game, timer runs, hard
+// cutoff, progress saved. With `unlimited` (school finished, or no school at
+// all today) the same room opens with no clock — there's no work to get back
+// to, so nothing to cut them off for.
+export default function BreakRoom({
+  studentId, large, onClose, initialGame = null, unlimited = false, noSchoolToday = false,
+}) {
   const [secondsLeft, setSecondsLeft] = useState(BREAK_SECONDS);
   const [game, setGame] = useState(initialGame); // 'sudoku' | 'wordsearch' | 'builder' | 'trivia' | 'versus'
   const [myTurnCount, setMyTurnCount] = useState(0);
@@ -23,6 +28,7 @@ export default function BreakRoom({ studentId, large, onClose, initialGame = nul
   );
 
   useEffect(() => {
+    if (unlimited) return undefined; // free play — no clock at all
     const t = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
@@ -34,19 +40,31 @@ export default function BreakRoom({ studentId, large, onClose, initialGame = nul
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [onClose]);
+  }, [onClose, unlimited]);
 
   const mm = String(Math.floor(secondsLeft / 60));
   const ss = String(secondsLeft % 60).padStart(2, '0');
+  const timeUp = !unlimited && secondsLeft === 0;
 
   return (
     <div className="break-overlay">
       <div className="break-sheet">
         <div className="break-header">
-          <h2>🧠 Brain break!</h2>
-          <span className={`break-timer ${secondsLeft <= 30 ? 'break-timer-low' : ''}`}>{mm}:{ss}</span>
+          <h2>{unlimited ? '🎮 Game time!' : '🧠 Brain break!'}</h2>
+          {unlimited ? (
+            <span className="break-freeplay">no timer ✨</span>
+          ) : (
+            <span className={`break-timer ${secondsLeft <= 30 ? 'break-timer-low' : ''}`}>{mm}:{ss}</span>
+          )}
         </div>
-        {secondsLeft === 0 ? (
+        {unlimited && !game && (
+          <p className="break-freeplay-note">
+            {noSchoolToday
+              ? 'No school today — play as long as you like.'
+              : 'School\'s done for today — play as long as you like.'}
+          </p>
+        )}
+        {timeUp ? (
           <p className="break-over">⏰ Break's over — back to it! You've got this.</p>
         ) : !game ? (
           <div className="break-picker">
@@ -70,8 +88,10 @@ export default function BreakRoom({ studentId, large, onClose, initialGame = nul
             {game === 'versus' && <VersusGames studentId={studentId} large={large} />}
           </>
         )}
-        {secondsLeft > 0 && (
-          <button className="break-done" onClick={onClose}>I'm ready to keep working →</button>
+        {!timeUp && (
+          <button className="break-done" onClick={onClose}>
+            {unlimited ? 'Done playing →' : 'I\'m ready to keep working →'}
+          </button>
         )}
       </div>
     </div>

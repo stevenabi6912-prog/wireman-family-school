@@ -23,6 +23,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .break-header h2 {
@@ -38,6 +40,23 @@
   color: #2c7a48;
   border-radius: 999px;
   padding: 0.25rem 0.9rem;
+}
+
+/* Free play (day finished / no school): no clock, and a line saying why */
+.break-freeplay {
+  font-size: 1rem;
+  font-weight: 800;
+  background: #e8f2ea;
+  color: #2c7a48;
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  white-space: nowrap;
+}
+
+.break-freeplay-note {
+  margin: 0.4rem 0 0;
+  color: #2c7a48;
+  font-size: 0.95rem;
 }
 
 .break-timer-low {
