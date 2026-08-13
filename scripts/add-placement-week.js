@@ -75,6 +75,7 @@ async function main() {
       title: 'Start-of-year reading check with Mom',
       contentPath: DIBELS[kid], keyPath: null, externalUrl: null,
       status: 'not_started', waivedReason: null,
+      assessment: 'reading', // marks this for the Reading Assessment results panel
       instructions: 'Read the passage out loud to Mom — she has the timing sheet. Check it off when you\'re done.',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),

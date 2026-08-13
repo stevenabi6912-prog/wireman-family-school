@@ -25,6 +25,13 @@ const TYPE_LABELS = {
 // the instructions ask for a photo, so those need the upload form.
 const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'audio', 'task']);
 
+// Bible, memorization, and reading (chapter-with-Mom AND the reading-check
+// assessment) all typically involve waiting for a parent before work truly
+// begins — auto-starting the clock the instant the card becomes active counts
+// that wait as work time, which is exactly what threw off Abi's weekly
+// reports. These types wait for an explicit "we're starting" tap instead.
+const MANUAL_START_TYPES = new Set(['bible', 'memorization', 'reading']);
+
 function clockLabel(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -67,12 +74,16 @@ export default function AssignmentCard({
     }
   }
 
-  // Start the clock the first time this item becomes the active one.
+  const needsManualStart = MANUAL_START_TYPES.has(assignment.itemType);
+
+  // Start the clock the first time this item becomes the active one — except
+  // for types where a parent is typically involved, which wait for the tap
+  // below instead of starting the moment the previous item was checked off.
   useEffect(() => {
-    if (isActive && !assignment.startedAt) {
+    if (isActive && !assignment.startedAt && !needsManualStart) {
       markStarted(assignment.id).catch(() => {});
     }
-  }, [isActive, assignment.id, assignment.startedAt]);
+  }, [isActive, assignment.id, assignment.startedAt, needsManualStart]);
 
   async function markDone() {
     await completeAssignment(assignment);
@@ -113,6 +124,12 @@ export default function AssignmentCard({
 
       {isActive && (
         <div className="assignment-body">
+          {needsManualStart && !assignment.startedAt && (
+            <button className="start-now-btn" onClick={() => markStarted(assignment.id).catch(() => {})}>
+              ▶ {large ? "We're starting!" : "Tap when you actually start — this is what times it"}
+            </button>
+          )}
+
           <SubjectWarmUp subjectId={assignment.subjectId} studentId={studentId} large={large} />
 
           {targetMinutes != null && paceLine(targetMinutes, large) && (

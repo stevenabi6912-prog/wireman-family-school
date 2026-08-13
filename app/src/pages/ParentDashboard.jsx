@@ -22,6 +22,7 @@ import RecitePanel from '../components/RecitePanel';
 import MorningBriefing, { FamilyQuest, EmailPrefs, LowScoreAlert } from '../components/MorningBriefing';
 import { SweepPanel, WeekPreview, QuickAdd, EchoShelf } from '../components/PlanningTools';
 import { SearchBox } from '../components/AbiExtras';
+import ReadingAssessment from '../components/ReadingAssessment';
 import SchoolCalendar from '../components/SchoolCalendar';
 import BugReport from '../components/BugReport';
 import AbiTheme from '../components/AbiTheme';
@@ -204,6 +205,8 @@ export default function ParentDashboard() {
       />
 
       <SearchBox students={students} grades={grades} />
+
+      <ReadingAssessment students={students} order={STUDENT_ORDER} />
 
       <section className="student-grid">
         {STUDENT_ORDER.map((id) => {
