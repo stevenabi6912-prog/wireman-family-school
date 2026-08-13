@@ -262,10 +262,17 @@ export default function StudentChecklist() {
     return () => clearInterval(t);
   }, [studentId, activeIndex, breakOpen]);
 
+  // Once the day is finished — or there was never a day to finish — the break
+  // room is just the game room: no countdown, and it doesn't spend the break
+  // they earned by working. Breaks are only rationed against work still to do.
+  const freePlay = total === 0 || allDone;
+
   function openBreak(toGame = null) {
-    startBreak(studentId);
-    setBreakReady(false);
-    setMinsToBreak(30);
+    if (!freePlay) {
+      startBreak(studentId);
+      setBreakReady(false);
+      setMinsToBreak(30);
+    }
     setBreakGame(toGame);
     setBreakOpen(true);
   }
@@ -466,6 +473,8 @@ export default function StudentChecklist() {
           studentId={studentId}
           large={large}
           initialGame={breakGame}
+          unlimited={freePlay}
+          noSchoolToday={total === 0}
           onClose={() => { setBreakOpen(false); setBreakGame(null); }}
         />
       )}
