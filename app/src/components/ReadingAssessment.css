@@ -115,3 +115,14 @@
 .reading-save:disabled {
   opacity: 0.5;
 }
+
+.reading-passage {
+  width: 100%;
+  margin: 0 0 4px;
+  font-size: 0.88rem;
+  color: #444;
+  background: #fff8dc;
+  border: 1px solid #e8c96a;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
