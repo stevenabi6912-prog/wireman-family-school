@@ -167,10 +167,11 @@ export default function AssignmentCard({
             </p>
           )}
 
-          {/* Any item with a site to visit gets its button, whatever its type. */}
+          {/* Any item with a site to visit gets its button, whatever its type —
+              the label used to always say "math lesson" regardless of subject. */}
           {assignment.externalUrl ? (
             <a className="video-link" href={assignment.externalUrl} target="_blank" rel="noreferrer">
-              ▶ Open your math lesson
+              ▶ {assignment.subjectId === 'bible' ? 'Open Blue Letter Bible' : assignment.subjectId === 'math' ? 'Open your math lesson' : 'Open the link'}
             </a>
           ) : assignment.itemType === 'video' ? (
             <p className="video-placeholder">Your math video link is coming soon — ask Mom which lesson to watch.</p>

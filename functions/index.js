@@ -649,12 +649,41 @@ async function buildNightlyReport() {
   return today;
 }
 
+// Mirrors buildCalendar()'s predicate (app/src/lib/calendar.js) — is this ISO
+// date an actual scheduled school day, including early-start make-up days?
+async function isRealSchoolDay(db, iso) {
+  const famSnap = await db.doc(FAMILY_DOC).get();
+  const fam = famSnap.exists ? famSnap.data() : null;
+  if (!fam) return true; // no calendar on file — fail open, always send
+  const { schoolYearStart, schoolDays = [], holidays = [], blockouts = [], extraDays = [] } = fam;
+  const inAnyRange = (i, ranges) => (ranges ?? []).some((r) => i >= r.start && i <= r.end);
+  const d = new Date(iso + 'T12:00:00');
+  const isoWeekday = ((d.getDay() + 6) % 7) + 1; // Mon=1..Sun=7
+  return extraDays.includes(iso)
+    || (iso >= schoolYearStart && schoolDays.includes(isoWeekday) && !inAnyRange(iso, holidays) && !inAnyRange(iso, blockouts));
+}
+
 export const nightlyReport = onSchedule(
   { schedule: '30 17 * * 1-4', timeZone: 'America/Detroit' },
   async () => {
     if (!(await emailPrefEnabled('nightly'))) {
       console.log("nightlyReport skipped — emailPrefs.nightly is off");
       return;
+    }
+    // No email for a day nothing was scheduled on, UNLESS a kid actually did
+    // work-ahead on their own — then it's worth knowing about.
+    const db = admin.firestore();
+    const today = isoToday();
+    if (!(await isRealSchoolDay(db, today))) {
+      const doneToday = await db.collection('assignments')
+        .where('scheduledDate', '==', today)
+        .where('status', 'in', [...DONE])
+        .limit(1)
+        .get();
+      if (doneToday.empty) {
+        console.log(`nightlyReport skipped — ${today} has no school scheduled and nothing was completed`);
+        return;
+      }
     }
     await buildNightlyReport();
   }

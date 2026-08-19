@@ -61,7 +61,7 @@ export async function cachedMemoryWeek() {
 }
 
 // Which memory tracks belong to each subject, so the warm-up before a lesson
-// is about THAT lesson. Math has its own fact sprint on top of this.
+// is about THAT lesson.
 export const TRACKS_FOR_SUBJECT = {
   bible: ['bible'],
   history: ['history'],
@@ -70,7 +70,8 @@ export const TRACKS_FOR_SUBJECT = {
   // Writing deliberately has no warm-up: grammar is already drilled on the
   // ELA card the same day, and nobody wants to recite it twice.
   spanish: ['spanish'],
-  math: ['math'],
+  // Math deliberately has no warm-up either: the 2-minute fact sprint on the
+  // card IS the math memory work, and Abi asked not to have both.
 };
 
 export async function fetchMemoryAttempts() {
