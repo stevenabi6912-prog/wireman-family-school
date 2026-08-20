@@ -345,7 +345,9 @@ function ChessGame({ game, studentId, large }) {
 
       {game.lastMove && (
         <p className="chess-lastmove">
-          {game.lastBy === studentId ? 'You' : NAMES[them]}: {game.lastMove}
+          {/* Games that predate lastBy still attribute correctly: whoever is
+              NOT on move made the last move. */}
+          {(game.lastBy ?? (game.turn === studentId ? them : studentId)) === studentId ? 'You' : NAMES[them]}: {game.lastMove}
           {game.lastCaptured && (
             <span className="chess-took"> — took {PIECE_GLYPH[game.lastCaptured]}</span>
           )}
