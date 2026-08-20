@@ -369,3 +369,19 @@
 }
 
 .chess-took { color: #b3402f; font-weight: 800; }
+
+/* checkers: the flying disc fills its square like a board piece would */
+.chess-anim-piece .ck-piece,
+.chess-capture-fx .ck-piece {
+  width: 74%;
+  height: 74%;
+}
+
+/* small discs in the captured tray */
+.ck-taken {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+}

@@ -32,6 +32,16 @@ const CHECKOFF_TYPES = new Set(['bible', 'memorization', 'reading', 'audio', 'ta
 // reports. These types wait for an explicit "we're starting" tap instead.
 const MANUAL_START_TYPES = new Set(['bible', 'memorization', 'reading']);
 
+// Work that happens off-screen shouldn't start its clock the instant the card
+// opens. Beyond the types above, a paper worksheet is the big one: the kid
+// opens the card, then goes and fetches the workbook, does it at the table,
+// and only comes back to photograph it — all of which was being counted as
+// working time.
+function startsByHand(assignment) {
+  if (MANUAL_START_TYPES.has(assignment.itemType)) return true;
+  return assignment.itemType === 'worksheet' && assignment.subjectId === 'math';
+}
+
 function clockLabel(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -74,7 +84,7 @@ export default function AssignmentCard({
     }
   }
 
-  const needsManualStart = MANUAL_START_TYPES.has(assignment.itemType);
+  const needsManualStart = startsByHand(assignment);
 
   // Start the clock the first time this item becomes the active one — except
   // for types where a parent is typically involved, which wait for the tap
@@ -126,7 +136,9 @@ export default function AssignmentCard({
         <div className="assignment-body">
           {needsManualStart && !assignment.startedAt && (
             <button className="start-now-btn" onClick={() => markStarted(assignment.id).catch(() => {})}>
-              ▶ {large ? "We're starting!" : "Tap when you actually start — this is what times it"}
+              ▶ {assignment.itemType === 'worksheet'
+                ? (large ? "I have my worksheet — start!" : "I've got my worksheet out — start the clock")
+                : (large ? "We're starting!" : "Tap when you actually start — this is what times it")}
             </button>
           )}
 
