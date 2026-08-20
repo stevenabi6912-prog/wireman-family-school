@@ -162,7 +162,9 @@ function Banner({ game, studentId, statusLabel }) {
             : awaiting ? '⚡ Your move' : `Waiting for ${NAMES[them]}`}
       </span>
       {statusLabel && <span className="vs-status">{statusLabel}</span>}
-      {game.lastMove && <span className="vs-last">Last: {game.lastMove}</span>}
+      {/* Chess prints a richer last-move line under its board (who moved, and
+          what it took), so don't say it twice. */}
+      {game.lastMove && game.type !== 'chess' && <span className="vs-last">Last: {game.lastMove}</span>}
     </div>
   );
 }
@@ -183,8 +185,26 @@ function EndActions({ game, studentId }) {
 }
 
 // ============================ Chess ============================
+// Material at the start of a game, so captured pieces can be derived by
+// diffing the live board instead of maintaining a separate list.
+const START_MATERIAL = { P: 8, N: 2, B: 2, R: 2, Q: 1 };
+
+function capturedPieces(board, color) {
+  const alive = {};
+  for (const p of board) {
+    if (p && p[0] === color) alive[p[1]] = (alive[p[1]] ?? 0) + 1;
+  }
+  const gone = [];
+  for (const [kind, n] of Object.entries(START_MATERIAL)) {
+    for (let k = 0; k < n - (alive[kind] ?? 0); k++) gone.push(color + kind);
+  }
+  return gone;
+}
+
 function ChessGame({ game, studentId, large }) {
   const [sel, setSel] = useState(null);
+  const [anim, setAnim] = useState(null); // { piece, from, to, at } mid-slide
+  const seenMove = useRef(null);
   const state = game.state;
   const iAmWhite = game.players[0] === studentId;
   const myColor = iAmWhite ? 'w' : 'b';
@@ -202,6 +222,34 @@ function ChessGame({ game, studentId, large }) {
     return iAmWhite ? idx : idx.reverse();
   }, [iAmWhite]);
 
+  // square index -> where it sits on screen, so the sliding piece can be
+  // positioned in board percentages regardless of which way the board faces.
+  const posOf = useMemo(() => {
+    const m = new Array(64);
+    order.forEach((sq, pos) => { m[sq] = pos; });
+    return m;
+  }, [order]);
+  const coords = (sq) => ({ left: `${(posOf[sq] % 8) * 12.5}%`, top: `${Math.floor(posOf[sq] / 8) * 12.5}%` });
+
+  // Slide the piece that just moved. The board already holds the NEW position,
+  // so the destination square is left blank while an overlay travels into it —
+  // that reads as movement without ever rendering a stale board.
+  useEffect(() => {
+    const { lastFrom, lastTo, moveSeq } = game;
+    if (lastFrom == null || lastTo == null || moveSeq == null) return undefined;
+    if (seenMove.current === moveSeq) return undefined;
+    seenMove.current = moveSeq;
+
+    const piece = state.board[lastTo];
+    if (!piece) return undefined;
+    setAnim({ piece, from: lastFrom, to: lastTo, at: 'from' });
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => {
+      setAnim((a) => (a ? { ...a, at: 'to' } : a));
+    }));
+    const done = setTimeout(() => setAnim(null), 380);
+    return () => { cancelAnimationFrame(raf); clearTimeout(done); };
+  }, [game.moveSeq, game.lastFrom, game.lastTo, state.board]);
+
   async function tap(i) {
     if (!myTurn) return;
     const piece = state.board[i];
@@ -209,6 +257,11 @@ function ChessGame({ game, studentId, large }) {
       const move = targets.find((m) => m.to === i);
       if (move) {
         const label = moveLabel(state, sel, i, 'Q');
+        // What this move takes off the board — the occupant of the target
+        // square, or the pawn beside it on an en-passant capture.
+        const captured = move.ep
+          ? state.board[i + (state.board[sel][0] === 'w' ? 8 : -8)]
+          : state.board[i] || null;
         const next = applyMove(state, sel, i, 'Q');
         const after = gameStatus(next);
         setSel(null);
@@ -218,6 +271,11 @@ function ChessGame({ game, studentId, large }) {
           state: next,
           turn: after.checkmate || after.draw ? game.turn : game.players.find((p) => p !== studentId),
           lastMove: label + (after.checkmate ? ' — checkmate!' : after.check ? ' — check!' : ''),
+          lastFrom: sel,
+          lastTo: i,
+          lastCaptured: captured || null,
+          lastBy: studentId,
+          moveSeq: (game.moveSeq ?? 0) + 1,
           status: after.checkmate || after.draw ? 'over' : 'active',
           winner: after.checkmate ? studentId : null,
         });
@@ -227,31 +285,87 @@ function ChessGame({ game, studentId, large }) {
     setSel(piece && piece[0] === myColor ? i : null);
   }
 
+  const myLoss = capturedPieces(state.board, myColor);
+  const theirLoss = capturedPieces(state.board, myColor === 'w' ? 'b' : 'w');
+  const them = game.players.find((p) => p !== studentId);
+
   return (
     <div className="vs-game">
       <Banner game={game} studentId={studentId} statusLabel={status.label} />
-      <div className={`chess-board ${large ? 'chess-large' : ''}`}>
-        {order.map((i) => {
-          const row = Math.floor(i / 8);
-          const light = (row + (i % 8)) % 2 === 0;
-          const piece = state.board[i];
-          const isTarget = targets.some((m) => m.to === i);
-          return (
-            <button
-              key={i}
-              className={`chess-sq ${light ? 'sq-light' : 'sq-dark'} ${sel === i ? 'sq-sel' : ''} ${isTarget ? 'sq-target' : ''}`}
-              onClick={() => tap(i)}
-            >
-              <span className={piece && piece[0] === 'w' ? 'pc-white' : 'pc-black'}>
-                {piece ? PIECE_GLYPH[piece] : ''}
-              </span>
-              {isTarget && <i className="sq-dot" />}
-            </button>
-          );
-        })}
+
+      <CapturedTray pieces={theirLoss} label={`You've taken`} />
+
+      <div className={`chess-wrap ${large ? 'chess-large' : ''}`}>
+        <div className="chess-board">
+          {order.map((i) => {
+            const row = Math.floor(i / 8);
+            const light = (row + (i % 8)) % 2 === 0;
+            const piece = state.board[i];
+            const isTarget = targets.some((m) => m.to === i);
+            const isFrom = game.lastFrom === i;
+            const isTo = game.lastTo === i;
+            const hideForAnim = anim && anim.to === i;
+            return (
+              <button
+                key={i}
+                className={`chess-sq ${light ? 'sq-light' : 'sq-dark'} ${sel === i ? 'sq-sel' : ''} ${isTarget ? 'sq-target' : ''} ${isFrom ? 'sq-lastfrom' : ''} ${isTo ? 'sq-lastto' : ''}`}
+                onClick={() => tap(i)}
+              >
+                <span className={piece && piece[0] === 'w' ? 'pc-white' : 'pc-black'}>
+                  {piece && !hideForAnim ? PIECE_GLYPH[piece] : ''}
+                </span>
+                {isTarget && <i className="sq-dot" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* the piece in flight */}
+        {anim && (
+          <span
+            className={`chess-anim-piece ${anim.piece[0] === 'w' ? 'pc-white' : 'pc-black'}`}
+            style={coords(anim.at === 'from' ? anim.from : anim.to)}
+          >
+            {PIECE_GLYPH[anim.piece]}
+          </span>
+        )}
+
+        {/* the piece it landed on, bursting as it goes */}
+        {anim && game.lastCaptured && (
+          <span
+            className={`chess-capture-fx ${game.lastCaptured[0] === 'w' ? 'pc-white' : 'pc-black'}`}
+            style={coords(anim.to)}
+          >
+            {PIECE_GLYPH[game.lastCaptured]}
+          </span>
+        )}
       </div>
+
+      <CapturedTray pieces={myLoss} label={`${NAMES[them]} has taken`} />
+
+      {game.lastMove && (
+        <p className="chess-lastmove">
+          {game.lastBy === studentId ? 'You' : NAMES[them]}: {game.lastMove}
+          {game.lastCaptured && (
+            <span className="chess-took"> — took {PIECE_GLYPH[game.lastCaptured]}</span>
+          )}
+        </p>
+      )}
+
       <p className="vs-hint">You are {iAmWhite ? 'White (you moved first)' : 'Black'}. Tap a piece, then tap where it goes.</p>
       <EndActions game={game} studentId={studentId} />
+    </div>
+  );
+}
+
+function CapturedTray({ pieces, label }) {
+  if (!pieces.length) return null;
+  return (
+    <div className="captured-tray">
+      <span className="captured-label">{label}:</span>
+      {pieces.map((p, i) => (
+        <span key={i} className={p[0] === 'w' ? 'pc-white' : 'pc-black'}>{PIECE_GLYPH[p]}</span>
+      ))}
     </div>
   );
 }
@@ -309,7 +423,8 @@ function CheckersGame({ game, studentId, large }) {
   return (
     <div className="vs-game">
       <Banner game={game} studentId={studentId} statusLabel={status.label} />
-      <div className={`chess-board ${large ? 'chess-large' : ''}`}>
+      <div className={`chess-wrap ${large ? 'chess-large' : ''}`}>
+        <div className="chess-board">
         {order.map((i) => {
           const row = Math.floor(i / 8);
           const dark = (row + (i % 8)) % 2 === 1;
@@ -330,6 +445,7 @@ function CheckersGame({ game, studentId, large }) {
             </button>
           );
         })}
+        </div>
       </div>
       <p className="vs-hint">
         You are {iAmRed ? 'Red' : 'Black'}. {state.chain !== null && myTurn ? 'Keep jumping — you can go again!' : 'Tap a piece, then tap where it goes.'}

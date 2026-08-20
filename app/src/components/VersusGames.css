@@ -119,6 +119,13 @@
 .vs-last { font-size: 0.8rem; opacity: 0.7; width: 100%; }
 
 /* ---- shared 8x8 board (chess + checkers) ---- */
+.chess-wrap {
+  position: relative;          /* anchor for the sliding piece overlay */
+  width: min(92vw, 420px);
+}
+
+.chess-wrap.chess-large { width: min(94vw, 460px); }
+
 .chess-board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -126,7 +133,7 @@
      square's height would shift depending on whether a piece (tall glyph)
      or nothing sits in it, and the whole board visibly reflows every move. */
   grid-template-rows: repeat(8, 1fr);
-  width: min(92vw, 420px);
+  width: 100%;
   aspect-ratio: 1;
   border: 3px solid #6b4b2a;
   border-radius: 6px;
@@ -285,3 +292,80 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+/* ---- chess: move animation, last-move trail, captured pieces ---- */
+
+/* The board already holds the new position; this overlay slides into the
+   destination square so the move reads as movement rather than a jump. */
+.chess-anim-piece {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(18px, 5.6vw, 34px);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 5;
+  transition: left 0.34s cubic-bezier(0.22, 0.68, 0.36, 1),
+              top 0.34s cubic-bezier(0.22, 0.68, 0.36, 1);
+}
+
+.chess-wrap.chess-large .chess-anim-piece { font-size: clamp(20px, 6vw, 38px); }
+
+/* the piece being taken, bursting as the attacker lands on it */
+.chess-capture-fx {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(18px, 5.6vw, 34px);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 4;
+  animation: chess-capture 0.38s ease-out forwards;
+}
+
+@keyframes chess-capture {
+  0%   { transform: scale(1);   opacity: 1; }
+  55%  { transform: scale(1.35); opacity: 0.9; }
+  100% { transform: scale(0.2); opacity: 0; }
+}
+
+/* where the last move came from and went to */
+.sq-lastfrom { box-shadow: inset 0 0 0 3px rgba(255, 209, 102, 0.5); }
+.sq-lastto   { box-shadow: inset 0 0 0 4px rgba(255, 209, 102, 0.95); }
+
+/* selection still wins visually when both apply */
+.sq-sel { box-shadow: inset 0 0 0 4px #ffd166; }
+
+.captured-tray {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  font-size: 1.15rem;
+  line-height: 1;
+  min-height: 20px;
+}
+
+.captured-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+  margin-right: 4px;
+}
+
+.chess-lastmove {
+  margin: 2px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.chess-took { color: #b3402f; font-weight: 800; }
