@@ -88,7 +88,12 @@ export async function markStarted(assignmentId) {
 export async function completeAssignment(assignment) {
   const patch = { status: 'submitted', updatedAt: serverTimestamp() };
   const startedMs = assignment.startedAt?.toMillis?.();
-  if (startedMs) {
+  // A clock that started on a DIFFERENT day is stale (left open overnight, or
+  // stamped by an old bug) — recording days-long "work" poisons the hours log,
+  // so a cross-day start records no time at all rather than a wrong one.
+  const startedToday = startedMs &&
+    new Date(startedMs).toLocaleDateString('sv-SE') === new Date().toLocaleDateString('sv-SE');
+  if (startedToday) {
     patch.actualMinutes = Math.min(480, Math.max(1, Math.round((Date.now() - startedMs) / 60000)));
   }
   await updateDoc(doc(db, 'assignments', assignment.id), patch);

@@ -4,7 +4,7 @@ import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
 import { MathSprint, SubjectWarmUp } from './KidExtras';
-import { markStarted, completeAssignment, resolveContentUrl, undoCompletion } from '../lib/assignments';
+import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, todayISO } from '../lib/assignments';
 import { reopenAssignment } from '../lib/parentData';
 
 const TYPE_LABELS = {
@@ -89,11 +89,15 @@ export default function AssignmentCard({
   // Start the clock the first time this item becomes the active one — except
   // for types where a parent is typically involved, which wait for the tap
   // below instead of starting the moment the previous item was checked off.
+  // NEVER auto-start a future-dated item: the bonus round renders those as
+  // active cards, and merely LOOKING at the list was stamping startedAt on
+  // days-away work — which later read as 8 hours of "work" apiece.
   useEffect(() => {
-    if (isActive && !assignment.startedAt && !needsManualStart) {
+    const isFuture = assignment.scheduledDate > todayISO();
+    if (isActive && !assignment.startedAt && !needsManualStart && !isFuture) {
       markStarted(assignment.id).catch(() => {});
     }
-  }, [isActive, assignment.id, assignment.startedAt, needsManualStart]);
+  }, [isActive, assignment.id, assignment.startedAt, needsManualStart, assignment.scheduledDate]);
 
   async function markDone() {
     await completeAssignment(assignment);
