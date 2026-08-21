@@ -55,12 +55,15 @@ async function main() {
     const dow = ((day - 1) % 4) + 1;
     if (week <= 36) {
       const tracks = weekTracks[week - 1];
-      if (dow === 4 || dow > tracks.length) {
-        // Day 4 (and the spare day of 3-track weeks): repaso + recite
-        const src = tracks[dow === 4 ? 0 : tracks.length - 1];
+      if (dow > tracks.length) {
+        // 3-track weeks: day 4 is repaso of the week's NEWEST track. (Replaying
+        // the first track sent week 1 back to the CD's intro — Layla caught it.
+        // And 4-track weeks get no repaso day at all: day 4 IS track 4,
+        // otherwise the 4th track of every later week would never play.)
+        const src = tracks[tracks.length - 1];
         lessons.push({ path: src, title: `Spanish repaso (Week ${week}) — ${label(src)}`, review: true });
       } else {
-        lessons.push({ path: tracks[dow - 1], title: `Spanish (Week ${week}) — ${label(tracks[dow - 1])}` });
+        lessons.push({ path: tracks[dow - 1], title: `Spanish (Week ${week}) — ${label(tracks[dow - 1])}`, reciteDay: dow === 4 });
       }
     } else {
       const p = bridge[(day - 145) % bridge.length];
@@ -92,8 +95,10 @@ async function main() {
         keyPath: null,
         externalUrl: null,
         instructions: lesson.review
-          ? 'Repaso day! Replay this week\'s Spanish and say it all out loud — then show off this week\'s Spanish to Mom at recitation time. 🎤'
-          : 'Play today\'s Spanish lesson and say every phrase OUT LOUD with the audio. Flip Flop only works if your mouth moves!',
+          ? 'Repaso day! Replay this week\'s newest Spanish lesson and say it all out loud — then show off this week\'s Spanish to Mom at recitation time. 🎤'
+          : lesson.reciteDay
+            ? 'Play today\'s Spanish lesson and say every phrase OUT LOUD — then show off this week\'s Spanish to Mom at recitation time. 🎤'
+            : 'Play today\'s Spanish lesson and say every phrase OUT LOUD with the audio. Flip Flop only works if your mouth moves!',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
