@@ -162,6 +162,15 @@ service cloud.firestore {
       }
     }
 
+    // ---- business HQ: a kid runs their own real business (customers, jobs,
+    //      ledger, goals). Their data alone; parents can see and help. ----
+    match /businesses/{studentId} {
+      allow read, write: if isParent() || isStudent(studentId);
+      match /{document=**} {
+        allow read, write: if isParent() || isStudent(studentId);
+      }
+    }
+
     // ---- sibling kudos: a kid sends AS themselves, the recipient reads ----
     match /kudos/{id} {
       allow read: if isParent() || isStudent(resource.data.to);

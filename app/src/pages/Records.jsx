@@ -9,10 +9,11 @@ import WorkViewer from '../components/WorkViewer';
 import './Records.css';
 
 const STUDENT_ORDER = ['luke', 'layla', 'logan', 'lazarus'];
-const SUBJECTS = ['bible', 'math', 'ela', 'history', 'science', 'writing', 'spanish'];
+const SUBJECTS = ['bible', 'math', 'ela', 'history', 'science', 'writing', 'spanish', 'entrepreneurship'];
 const SUBJECT_NAMES = {
   bible: 'Bible', math: 'Math', ela: 'Grammar & Writing',
   history: 'History', science: 'Science', writing: 'Writing', spanish: 'Spanish',
+  entrepreneurship: 'Entrepreneurship (elective)',
   custom: 'From Mom',
 };
 

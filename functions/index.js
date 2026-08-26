@@ -318,9 +318,11 @@ async function runGrading(submissionId, submission) {
   const parentNotes = notesSnap.exists ? notesSnap.data().notes : null;
 
   // No answer key → route to Abi's manual review queue instead of guessing.
-  // Exception: clean-up items (cleanupFor set) are deliberately keyless — the
-  // question is in the instructions, so they're auto-graded without a key PDF.
-  if (!assignment.keyPath && !assignment.cleanupFor) {
+  // Exceptions, both deliberately keyless and auto-graded from instructions:
+  // clean-up items (cleanupFor set), and entrepreneurship — Luke's daily
+  // business-admin work is graded on completion, not answers, and a manual
+  // review every school day would bury Abi's queue.
+  if (!assignment.keyPath && !assignment.cleanupFor && assignment.subjectId !== 'entrepreneurship') {
     await gradeRef.set({
       assignmentId: submission.assignmentId,
       studentId: submission.studentId,

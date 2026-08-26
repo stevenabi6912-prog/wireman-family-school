@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
@@ -183,6 +184,12 @@ export default function AssignmentCard({
                 </button>
               )}
             </p>
+          )}
+
+          {assignment.subjectId === 'entrepreneurship' && (
+            <Link className="video-link" to={parentView ? `/business/${studentId}` : '/business'}>
+              🚜 Open my Business HQ and do today's task
+            </Link>
           )}
 
           {/* Any item with a site to visit gets its button, whatever its type —
