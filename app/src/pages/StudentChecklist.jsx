@@ -30,6 +30,12 @@ const EMPTY_DAY_LINES = [
   'School\'s closed. Adventure time!',
 ];
 
+function shiftDay(iso, delta) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
 function cheerLine(done, total, large) {
   if (total === 0 || done === 0) return null;
   const frac = done / total;
@@ -66,6 +72,12 @@ export default function StudentChecklist() {
   const prevDone = useRef(null);
   const prevBonusDone = useRef(null);
   const date = todayISO();
+  // Abi can page back through past school days to reopen work for a redo
+  // (e.g. the math lessons that had the wrong book attached). Kids always
+  // see today; this only exists under /dashboard/kid/:kidId.
+  const [viewDate, setViewDate] = useState(null); // null = today
+  const dayShown = parentView && viewDate ? viewDate : date;
+  const browsingOtherDay = dayShown !== date;
 
   useEffect(() => {
     if (!studentId) return;
@@ -74,7 +86,7 @@ export default function StudentChecklist() {
     });
     const unsubFamily = onSnapshot(doc(db, 'families', 'wireman'), (s) => setFamily(s.data()));
     fetchStreakStats(studentId, date).then(setStreakStats).catch(() => {});
-    const unsubDay = watchDayAssignments(studentId, date, setAssignments);
+    const unsubDay = watchDayAssignments(studentId, dayShown, setAssignments);
     const unsubUpcoming = watchUpcomingAssignments(studentId, date, setUpcoming);
     const unsubOverdue = watchOverdueAssignments(studentId, date, setOverdueRaw);
     return () => {
@@ -84,7 +96,7 @@ export default function StudentChecklist() {
       unsubUpcoming();
       unsubOverdue();
     };
-  }, [studentId, date]);
+  }, [studentId, date, dayShown]);
 
   // Resolve the kid's optional custom header image (private Storage path)
   useEffect(() => {
@@ -106,6 +118,7 @@ export default function StudentChecklist() {
   // today's list (plus any caught-up today, so progress doesn't jump around).
   const combined = useMemo(() => {
     if (!assignments) return null;
+    if (browsingOtherDay) return assignments; // a past day shows just that day
     const isToday = (t) => {
       const w = t?.toDate?.();
       return w && todayISO() === `${w.getFullYear()}-${String(w.getMonth() + 1).padStart(2, '0')}-${String(w.getDate()).padStart(2, '0')}`;
@@ -114,7 +127,7 @@ export default function StudentChecklist() {
       .filter((a) => !DONE_STATUSES.has(a.status) || isToday(a.updatedAt))
       .map((a) => ({ ...a, catchUp: true }));
     return [...catchUp, ...assignments];
-  }, [assignments, overdueRaw]);
+  }, [assignments, overdueRaw, browsingOtherDay]);
 
   // Land on the exact card an email link pointed at: scroll it into view and
   // let the highlight fade. Nothing happens if the item isn't on this page.
@@ -309,6 +322,24 @@ export default function StudentChecklist() {
         <div className="parentview-bar">
           <Link to="/dashboard">← Back to my dashboard</Link>
           <span>You're seeing {firstName}'s page exactly as they do — checking things off here is real.</span>
+          <span className="parentview-daynav">
+            <button onClick={() => setViewDate(shiftDay(dayShown, -1))} title="Earlier day">◀</button>
+            <input
+              type="date"
+              value={dayShown}
+              max={date}
+              onChange={(e) => setViewDate(e.target.value >= date ? null : e.target.value)}
+            />
+            <button onClick={() => setViewDate(shiftDay(dayShown, 1) >= date ? null : shiftDay(dayShown, 1))} disabled={!browsingOtherDay} title="Later day">▶</button>
+            {browsingOtherDay
+              ? <button className="parentview-today" onClick={() => setViewDate(null)}>Back to today</button>
+              : <em>browse an earlier day to reopen past work</em>}
+          </span>
+        </div>
+      )}
+      {browsingOtherDay && (
+        <div className="focus-miss-bar">
+          Looking at {firstName}'s list for <strong>{dayShown}</strong>. Tap “Let them do this again” on anything they should redo — it goes back on their list as catch-up work.
         </div>
       )}
       {focusElsewhere && (
@@ -373,7 +404,11 @@ export default function StudentChecklist() {
         </div>
       )}
 
-      {total === 0 ? (
+      {total === 0 && browsingOtherDay ? (
+        <div className="empty-day">
+          <h2>No school items for {firstName} on {dayShown}.</h2>
+        </div>
+      ) : total === 0 ? (
         <div className="empty-day">
           <div className="empty-day-emoji">{theme.avatar}</div>
           <h2>{emptyLine}</h2>

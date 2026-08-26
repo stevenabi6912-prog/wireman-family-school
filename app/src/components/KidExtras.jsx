@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { todayISO } from '../lib/assignments';
 import {
@@ -237,13 +237,17 @@ export function KudosSend({ studentId, large }) {
 export function KudosInbox({ studentId }) {
   const [cheers, setCheers] = useState([]);
 
+  // Live listener, not a one-shot fetch: a cheer sent while this kid is still
+  // working should pop in right then, not wait for a page reload tomorrow.
   useEffect(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const startIso = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-    getDocs(query(collection(db, 'kudos'), where('to', '==', studentId), where('date', '>=', startIso)))
-      .then((snap) => setCheers(snap.docs.map((d) => d.data())))
-      .catch(() => {});
+    return onSnapshot(
+      query(collection(db, 'kudos'), where('to', '==', studentId), where('date', '>=', startIso)),
+      (snap) => setCheers(snap.docs.map((d) => d.data())),
+      (err) => console.error('kudos inbox:', err)
+    );
   }, [studentId]);
 
   if (cheers.length === 0) return null;

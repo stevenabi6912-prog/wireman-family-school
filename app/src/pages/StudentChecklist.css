@@ -800,3 +800,35 @@
   font-size: 1.2rem;
   padding: 18px 22px;
 }
+
+/* Day navigation inside the parent peek bar */
+.parentview-daynav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.parentview-daynav button {
+  border: none;
+  background: #4a4563;
+  color: #fff;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.parentview-daynav button:disabled { opacity: 0.4; cursor: default; }
+
+.parentview-daynav input[type='date'] {
+  border: none;
+  border-radius: 8px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.parentview-daynav .parentview-today { background: #ffd166; color: #2d2a3e; font-weight: 700; }
+
+.parentview-daynav em { opacity: 0.7; font-style: normal; font-size: 0.82rem; }

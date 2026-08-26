@@ -92,12 +92,14 @@ export default function AssignmentCard({
   // NEVER auto-start a future-dated item: the bonus round renders those as
   // active cards, and merely LOOKING at the list was stamping startedAt on
   // days-away work — which later read as 8 hours of "work" apiece.
+  // ...and never from a parent's peek view either: Abi browsing a kid's page
+  // (today's or a past day's) must not stamp startedAt on their work.
   useEffect(() => {
     const isFuture = assignment.scheduledDate > todayISO();
-    if (isActive && !assignment.startedAt && !needsManualStart && !isFuture) {
+    if (isActive && !assignment.startedAt && !needsManualStart && !isFuture && !parentView) {
       markStarted(assignment.id).catch(() => {});
     }
-  }, [isActive, assignment.id, assignment.startedAt, needsManualStart, assignment.scheduledDate]);
+  }, [isActive, assignment.id, assignment.startedAt, needsManualStart, assignment.scheduledDate, parentView]);
 
   async function markDone() {
     await completeAssignment(assignment);

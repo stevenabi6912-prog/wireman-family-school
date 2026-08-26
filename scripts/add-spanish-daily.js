@@ -38,6 +38,11 @@ async function main() {
     });
   const bridge = mp3s.filter((n) => n.includes('bridge-audio')).sort((a, b) => trackNum(a) - trackNum(b));
 
+  // CD1 Track 1 is the series INTRO, not a lesson — scheduling it as day 1
+  // put the whole family one track behind the workbook (Layla caught it:
+  // "it is on track 5 but we are on track 6"). Lessons start at Track 2.
+  sisi.shift();
+
   const label = (p) => `Sí Sí CD ${p.match(/cd(\d+)/)[1]}, Track ${trackNum(p)}`;
 
   // Split the Sí Sí tracks into the 36 memory-plan weeks, in order.
