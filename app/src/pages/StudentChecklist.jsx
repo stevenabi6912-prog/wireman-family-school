@@ -372,7 +372,9 @@ export default function StudentChecklist() {
           <button className="mine-btn" onClick={() => setPickerOpen(true)}>✨ {large ? 'My look' : 'Make it mine'}</button>
           <div className="hero-small-actions">
             {student?.business && (
-              <Link className="mute-btn biz-hq-btn" to={parentView ? `/business/${studentId}` : '/business'} title="My Business HQ">🚜</Link>
+              <Link className="mute-btn biz-hq-btn" to={parentView ? `/business/${studentId}` : '/business'} title="My Business HQ">
+                {/Kennel/i.test(student.business) ? '🐾' : '🚜'}
+              </Link>
             )}
             <BugReport studentId={studentId} large={large} />
             <button className="mute-btn" onClick={() => setCalOpen(true)} title="School calendar">📅</button>

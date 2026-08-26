@@ -188,7 +188,7 @@ export default function AssignmentCard({
 
           {assignment.subjectId === 'entrepreneurship' && (
             <Link className="video-link" to={parentView ? `/business/${studentId}` : '/business'}>
-              🚜 Open my Business HQ and do today's task
+              💼 Open my Business HQ and do today's task
             </Link>
           )}
 
