@@ -11,7 +11,7 @@ import { buildCalendar, toISO } from './calendar';
 export const TIER_OF = { luke: 't3', layla: 't3', logan: 't2', lazarus: 't1' };
 const RANK = { t1: 1, t2: 2, t3: 3 };
 
-export const TRACK_ORDER = ['passage', 'bible', 'history', 'science', 'grammar', 'spelling', 'spanish', 'math'];
+export const TRACK_ORDER = ['passage', 'bible', 'history', 'science', 'grammar', 'spelling', 'spanish', 'math', 'extra'];
 export const TRACK_META = {
   bible: { emoji: '📖', label: 'Bible' },
   history: { emoji: '🏛️', label: 'History' },
@@ -21,6 +21,7 @@ export const TRACK_META = {
   spanish: { emoji: '🌎', label: 'Spanish' },
   math: { emoji: '➗', label: 'Math facts' },
   passage: { emoji: '🎤', label: 'Big recitation piece' },
+  extra: { emoji: '🌟', label: 'From Mom' },
 };
 
 // Which memory week (1-36) and week-day (1-4) today falls on, from the same

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { todayISO } from '../lib/assignments';
 import {
@@ -33,6 +33,7 @@ export default function RecitePanel({ students, order }) {
   const [week, setWeek] = useState(null);
   const [thisWeek, setThisWeek] = useState(null);
   const [editing, setEditing] = useState(null); // item being edited
+  const [adding, setAdding] = useState(false); // Abi adding her own extra item
 
   useEffect(() => {
     currentMemoryWeek().then((wk) => {
@@ -121,6 +122,8 @@ export default function RecitePanel({ students, order }) {
         from your Master List).
       </p>
 
+      <button className="recite-add-btn" onClick={() => setAdding(true)}>➕ Add extra memory work</button>
+
       {atRisk.length > 0 && (
         <div className="recite-atrisk">
           <strong>🔺 Needs another pass:</strong>{' '}
@@ -184,9 +187,93 @@ export default function RecitePanel({ students, order }) {
             setItems((prev) => prev.map((it) => (it.id === editing.id ? { ...it, ...patch } : it)));
             setEditing(null);
           }}
+          onRemoved={() => {
+            setItems((prev) => prev.filter((it) => it.id !== editing.id));
+            setEditing(null);
+          }}
+        />
+      )}
+
+      {adding && (
+        <AddItemModal
+          students={students}
+          order={order}
+          week={thisWeek}
+          onClose={() => setAdding(false)}
+          onAdded={(item) => {
+            setItems((prev) => [...prev, item]);
+            setAdding(false);
+          }}
         />
       )}
     </section>
+  );
+}
+
+// Abi's own extras become REAL memory items — with Got it / Almost / Again
+// buttons, mastery tracking, and the at-risk sweep, same as the seeded plan.
+function AddItemModal({ students, order, week, onClose, onAdded }) {
+  const [title, setTitle] = useState('');
+  const [reference, setReference] = useState('');
+  const [text, setText] = useState('');
+  const [who, setWho] = useState('everyone');
+  const [standing, setStanding] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!title.trim()) return;
+    setSaving(true);
+    const data = {
+      title: title.trim(),
+      reference: reference.trim(),
+      text: text.trim(),
+      track: 'extra',
+      source: 'abi',
+      ...(who === 'everyone' ? { minTier: 't1', maxTier: 't3' } : { studentId: who }),
+      ...(standing ? { standing: true } : { week }),
+      createdAt: serverTimestamp(),
+    };
+    const ref = await addDoc(collection(db, 'memoryItems'), data);
+    onAdded({ id: ref.id, ...data });
+  }
+
+  return (
+    <div className="recite-modal-overlay" onClick={onClose}>
+      <div className="recite-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>➕ Add extra memory work</h3>
+        <label>
+          What is it? (title)
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Psalm 121" />
+        </label>
+        <label>
+          Reference (optional)
+          <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="verse, source, page…" />
+        </label>
+        <label>
+          The exact words to memorize (optional — shows under the title)
+          <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} />
+        </label>
+        <label>
+          Who says it?
+          <select value={who} onChange={(e) => setWho(e.target.value)}>
+            <option value="everyone">Everyone</option>
+            {order.map((id) => (
+              <option key={id} value={id}>{students[id]?.name ?? id} only</option>
+            ))}
+          </select>
+        </label>
+        <label className="recite-standing">
+          <input type="checkbox" checked={standing} onChange={(e) => setStanding(e.target.checked)} />
+          Keep it on the recite list every week (uncheck for this week only)
+        </label>
+        <div className="recite-modal-actions">
+          <button onClick={onClose}>Cancel</button>
+          <button className="primary" disabled={saving || !title.trim()} onClick={save}>
+            {saving ? 'Adding…' : 'Add it'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -268,7 +355,7 @@ function KidButtons({ item, kidId, kidName, attempts, today, onRecord, onScore, 
 
 // Inline editor so Abi can put her Master List content (shorter T1/T2 verses,
 // exact wording, notes) straight onto any item — the kids see it immediately.
-function EditItemModal({ item, onClose, onSaved }) {
+function EditItemModal({ item, onClose, onSaved, onRemoved }) {
   const [title, setTitle] = useState(item.title ?? '');
   const [reference, setReference] = useState(item.reference ?? '');
   const [text, setText] = useState(item.text ?? '');
@@ -279,6 +366,13 @@ function EditItemModal({ item, onClose, onSaved }) {
     const patch = { title, reference, text };
     await updateDoc(doc(db, 'memoryItems', item.id), { ...patch, updatedAt: serverTimestamp() });
     onSaved(patch);
+  }
+
+  // Only items Abi added herself can be removed here — the seeded plan
+  // stays put (retiring plan items is a bigger decision than one tap).
+  async function remove() {
+    await deleteDoc(doc(db, 'memoryItems', item.id));
+    onRemoved?.();
   }
 
   return (
@@ -299,6 +393,9 @@ function EditItemModal({ item, onClose, onSaved }) {
           <textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} />
         </label>
         <div className="recite-modal-actions">
+          {item.source === 'abi' && (
+            <button className="recite-remove" onClick={remove}>🗑 Remove</button>
+          )}
           <button onClick={onClose}>Cancel</button>
           <button className="primary" disabled={saving} onClick={save}>
             {saving ? 'Saving…' : 'Save'}

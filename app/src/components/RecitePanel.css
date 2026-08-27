@@ -229,3 +229,37 @@
   color: #fff;
   font-weight: 700;
 }
+
+/* Abi's add-your-own memory work */
+.recite-add-btn {
+  align-self: flex-start;
+  border: 2px dashed #b9b0e8;
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.recite-add-btn:hover { border-style: solid; }
+
+.recite-standing {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.recite-remove {
+  margin-right: auto;
+  border: 1px solid #d0908a;
+  background: #fff;
+  color: #b3402f;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  padding: 6px 12px;
+}
