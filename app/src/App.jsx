@@ -6,11 +6,13 @@ import StudentChecklist from './pages/StudentChecklist';
 import ParentDashboard from './pages/ParentDashboard';
 import Records from './pages/Records';
 import BusinessHQ from './pages/BusinessHQ';
+import UpdateNudge from './components/UpdateNudge';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <UpdateNudge />
         <Routes>
           <Route path="/" element={<Login />} />
           <Route
