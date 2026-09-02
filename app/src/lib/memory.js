@@ -3,7 +3,7 @@
 // editable by her); attempts in /memoryAttempts (parent-recorded on Day 4).
 // Mastery is DERIVED, never stored: two passes at least 14 days apart.
 
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { buildCalendar, toISO } from './calendar';
 
@@ -44,15 +44,39 @@ export async function currentMemoryWeek() {
   };
 }
 
-// Cached for the page's lifetime: the warm-up panel on every subject card
-// asks for these, and the plan doesn't change mid-morning.
+// The memory plan is shared, live state: kids keep their tab open for DAYS,
+// so a fetch-once-cache-forever meant anything Abi added later was invisible
+// on their end until a reload ("Layla had science memory work listed on my
+// end but she could not see it on her end"). One onSnapshot keeps a single
+// shared cache current; watchers get pushed every change.
 let itemsCache = null;
 let weekCache = null;
+let itemsUnsub = null;
+const itemsWatchers = new Set();
 
+function ensureItemsListener() {
+  if (itemsUnsub) return;
+  itemsUnsub = onSnapshot(collection(db, 'memoryItems'), (snap) => {
+    itemsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    itemsWatchers.forEach((cb) => cb(itemsCache));
+  });
+}
+
+// Live subscription (preferred): fires immediately if data is already here,
+// then again on every change. Returns an unsubscribe for the callback.
+export function watchMemoryItems(callback) {
+  ensureItemsListener();
+  itemsWatchers.add(callback);
+  if (itemsCache) callback(itemsCache);
+  return () => itemsWatchers.delete(callback);
+}
+
+// One-shot read for the warm-up panels — served from the same live cache.
 export async function fetchMemoryItems() {
+  ensureItemsListener();
   if (itemsCache) return itemsCache;
   const snap = await getDocs(collection(db, 'memoryItems'));
-  itemsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  itemsCache = itemsCache ?? snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return itemsCache;
 }
 

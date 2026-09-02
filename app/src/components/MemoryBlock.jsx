@@ -3,7 +3,7 @@ import { ref, listAll, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import {
   currentMemoryWeek,
-  fetchMemoryItems,
+  watchMemoryItems,
   itemAppliesTo,
   itemsForWeek,
   pieceTextFor,
@@ -30,10 +30,8 @@ export default function MemoryBlock({ studentId, large }) {
     currentMemoryWeek().then(setWk).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!open || items) return;
-    fetchMemoryItems().then(setItems).catch(() => setItems([]));
-  }, [open, items]);
+  // Live: new items from Mom pop in without a reload, even in a days-old tab.
+  useEffect(() => watchMemoryItems(setItems), []);
 
   const mine = useMemo(() => {
     if (!items || !wk) return null;
