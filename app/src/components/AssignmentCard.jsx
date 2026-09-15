@@ -196,7 +196,7 @@ export default function AssignmentCard({
               the label used to always say "math lesson" regardless of subject. */}
           {assignment.externalUrl ? (
             <a className="video-link" href={assignment.externalUrl} target="_blank" rel="noreferrer">
-              ▶ {assignment.subjectId === 'bible' ? 'Open Blue Letter Bible' : assignment.subjectId === 'math' ? 'Open your math lesson' : assignment.subjectId === 'ela' ? 'Open Easy Peasy — my language arts' : 'Open the link'}
+              ▶ {assignment.externalUrl.includes('tfmchelsea') ? 'Open TFM — my ministry training' : assignment.subjectId === 'bible' ? 'Open Blue Letter Bible' : assignment.subjectId === 'math' ? 'Open your math lesson' : assignment.subjectId === 'ela' ? 'Open Easy Peasy — my language arts' : 'Open the link'}
             </a>
           ) : assignment.itemType === 'video' ? (
             <p className="video-placeholder">Your math video link is coming soon — ask Mom which lesson to watch.</p>
