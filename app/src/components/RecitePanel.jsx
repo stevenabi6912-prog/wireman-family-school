@@ -368,9 +368,11 @@ function EditItemModal({ item, onClose, onSaved, onRemoved }) {
     onSaved(patch);
   }
 
-  // Only items Abi added herself can be removed here — the seeded plan
-  // stays put (retiring plan items is a bigger decision than one tap).
+  // Any item can be deleted — Abi asked for this once old items started
+  // carrying over. A confirm guards the tap; past recitation attempts stay
+  // in the gradebook, the item just stops appearing anywhere.
   async function remove() {
+    if (!window.confirm(`Delete "${item.title}" from the memory plan? The kids stop seeing it everywhere, and it won't come back.`)) return;
     await deleteDoc(doc(db, 'memoryItems', item.id));
     onRemoved?.();
   }
@@ -393,9 +395,7 @@ function EditItemModal({ item, onClose, onSaved, onRemoved }) {
           <textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} />
         </label>
         <div className="recite-modal-actions">
-          {item.source === 'abi' && (
-            <button className="recite-remove" onClick={remove}>🗑 Remove</button>
-          )}
+          <button className="recite-remove" onClick={remove}>🗑 Delete</button>
           <button onClick={onClose}>Cancel</button>
           <button className="primary" disabled={saving} onClick={save}>
             {saving ? 'Saving…' : 'Save'}
