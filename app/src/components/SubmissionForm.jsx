@@ -53,13 +53,18 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
     scheduleAutosave(e.target.value, files);
   }
 
+  // Several photos can come in one pick (input is `multiple`), and the
+  // button can be tapped again for more — worksheets often span pages.
   async function onFilePicked(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
     setUploading(true);
     try {
-      const path = await uploadSubmissionFile(studentId, todayISO(), file);
-      const next = [...files, path];
+      const paths = [];
+      for (const file of picked) {
+        paths.push(await uploadSubmissionFile(studentId, todayISO(), file));
+      }
+      const next = [...files, ...paths];
       setFiles(next);
       await saveDraft(assignment, studentId, { text, fileUrls: next });
       setSaveState('saved');
@@ -67,6 +72,13 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
       setUploading(false);
       e.target.value = '';
     }
+  }
+
+  async function removeFile(path) {
+    const next = files.filter((f) => f !== path);
+    setFiles(next);
+    await saveDraft(assignment, studentId, { text, fileUrls: next });
+    setSaveState('saved');
   }
 
   async function onSubmit() {
@@ -101,16 +113,27 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
       />
       <div className="submission-actions">
         <label className="upload-btn">
-          {uploading ? 'Uploading…' : large ? '📷 Add a photo' : '📷 Add a photo of paper work'}
-          <input type="file" accept="image/*,.pdf" onChange={onFilePicked} hidden disabled={uploading} />
+          {uploading
+            ? 'Uploading…'
+            : files.length > 0
+              ? (large ? '📷 Add another photo' : '📷 Add another photo')
+              : (large ? '📷 Add a photo' : '📷 Add photos of paper work')}
+          <input type="file" accept="image/*,.pdf" multiple onChange={onFilePicked} hidden disabled={uploading} />
         </label>
-        {files.length > 0 && (
-          <span className="file-count">{files.length} photo{files.length > 1 ? 's' : ''} attached</span>
-        )}
         <span className={`autosave-note autosave-${saveState}`}>
           {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : ''}
         </span>
       </div>
+      {files.length > 0 && (
+        <div className="file-list">
+          {files.map((f, i) => (
+            <span key={f} className="file-chip">
+              📄 Photo {i + 1}
+              <button className="file-remove" title="Remove this photo" onClick={() => removeFile(f)}>✕</button>
+            </span>
+          ))}
+        </div>
+      )}
       <button className="submit-btn" onClick={onSubmit} disabled={!canSubmit}>
         {submitting ? 'Turning in…' : 'Turn it in!'}
       </button>

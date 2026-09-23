@@ -835,3 +835,35 @@
 
 /* Business HQ button in the header row */
 .biz-hq-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* attached-photo chips under the submission form */
+.file-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef3ee;
+  border: 1px solid #d3e0d3;
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.file-remove {
+  border: none;
+  background: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #a33;
+}
