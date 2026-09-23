@@ -120,55 +120,60 @@ export default function Records() {
         return (
           <section key={id} className="records-student">
             <h2>{students[id]?.name ?? id} — Grade {students[id]?.grade ?? ''}</h2>
-            <p className="records-averages">
-              {SUBJECTS.filter((s) => avgRow[s] && (subjectFilter === 'all' || s === subjectFilter)).map((s) => (
-                <span key={s} className="avg-chip">
-                  {SUBJECT_NAMES[s]}: <strong>{avgRow[s].avg}%</strong> ({avgRow[s].count})
-                </span>
+            {list.length === 0 && <p className="records-averages"><span className="records-none">Nothing here yet.</span></p>}
+            {/* Grouped by subject (Abi's ask), known subjects first, anything
+                unexpected (e.g. 'custom') at the end so no grade ever hides. */}
+            {[...SUBJECTS, ...new Set(list.map((g) => g.subjectId).filter((x) => !SUBJECTS.includes(x)))]
+              .map((subj) => ({ subj, rows: list.filter((g) => g.subjectId === subj) }))
+              .filter(({ rows }) => rows.length > 0)
+              .map(({ subj, rows }) => (
+                <div key={subj} className="records-subject">
+                  <h3 className="records-subject-head">
+                    {SUBJECT_NAMES[subj] ?? subj}
+                    {avgRow[subj] && (
+                      <span className="avg-chip">avg <strong>{avgRow[subj].avg}%</strong> ({avgRow[subj].count} graded)</span>
+                    )}
+                  </h3>
+                  <table className="records-table">
+                    <thead>
+                      <tr><th>Date</th><th>Assignment</th><th>Score</th><th>%</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((g) => {
+                        const pct = gradePct(g);
+                        const low = pct != null && pct < 65;
+                        const isOpen = openWork === g.id;
+                        return (
+                          <Fragment key={g.id}>
+                            <tr className={low ? 'grade-row-low' : ''}>
+                              <td>{g.gradedAt?.toDate?.()?.toLocaleDateString?.() ?? ''}</td>
+                              <td>{assignmentTitles[g.assignmentId] ?? g.assignmentId}</td>
+                              <td>{scoreLabel(g)}</td>
+                              <td>
+                                {pct == null ? '—' : `${pct}%`}
+                                {low && <span className="grade-low-chip">needs a look</span>}
+                              </td>
+                              <td>
+                                <button
+                                  className="grade-see-btn no-print"
+                                  onClick={() => setOpenWork(isOpen ? null : g.id)}
+                                >
+                                  {isOpen ? 'hide' : '👀 see the work'}
+                                </button>
+                              </td>
+                            </tr>
+                            {isOpen && (
+                              <tr className="no-print">
+                                <td colSpan={5}><WorkViewer grade={g} open /></td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               ))}
-              {list.length === 0 && <span className="records-none">Nothing here yet.</span>}
-            </p>
-            {list.length > 0 && (
-              <table className="records-table">
-                <thead>
-                  <tr><th>Date</th><th>Subject</th><th>Assignment</th><th>Score</th><th>%</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {list.map((g) => {
-                    const pct = gradePct(g);
-                    const low = pct != null && pct < 65;
-                    const isOpen = openWork === g.id;
-                    return (
-                      <Fragment key={g.id}>
-                        <tr className={low ? 'grade-row-low' : ''}>
-                          <td>{g.gradedAt?.toDate?.()?.toLocaleDateString?.() ?? ''}</td>
-                          <td>{SUBJECT_NAMES[g.subjectId] ?? g.subjectId}</td>
-                          <td>{assignmentTitles[g.assignmentId] ?? g.assignmentId}</td>
-                          <td>{scoreLabel(g)}</td>
-                          <td>
-                            {pct == null ? '—' : `${pct}%`}
-                            {low && <span className="grade-low-chip">needs a look</span>}
-                          </td>
-                          <td>
-                            <button
-                              className="grade-see-btn no-print"
-                              onClick={() => setOpenWork(isOpen ? null : g.id)}
-                            >
-                              {isOpen ? 'hide' : '👀 see the work'}
-                            </button>
-                          </td>
-                        </tr>
-                        {isOpen && (
-                          <tr className="no-print">
-                            <td colSpan={6}><WorkViewer grade={g} open /></td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
           </section>
         );
       })}
