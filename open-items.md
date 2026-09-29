@@ -4,7 +4,6 @@
 
 - **RESOLVED-ish (Sep 29): math answer keys uploaded & auto-grading is ON** for Luke, Layla (Algebra 1 Instruction Manual) and Logan (Epsilon IM), plus Fix It! Grammar teacher manuals (L5/L2) and both IEW writing teacher books. 978 assignments keyed with per-lesson page anchors. Lazarus deliberately left manual per Abi.
 - **⚠️ CONFIRM: is Luke & Layla's math Math-U-See Algebra 1 after all?** An earlier note said their course was "Legacy" and the Algebra 1 pages were detached as the wrong book. But their lesson sequence matches the Algebra 1 TOC exactly (L3 Solve for Unknown, L4 Distributive Property, L5 Number Lines & Cartesian Coordinates), and the family Drive's Math 8 folder holds the Algebra 1 books — so grading now keys against the Algebra 1 Instruction Manual. If they're truly on a different "Legacy" curriculum, say so and the keys come off; if Algebra 1 is right, the student workbook pages (Book A/B) can be attached to their math cards too.
-- **NOTE: no math answer keys are uploaded**, so every math photo lands in Abi's "Needs your eyes" queue rather than being auto-graded. Send keys if you want the grader to handle them.
 - **Waiting on Hillsdale: Traditional Spelling III** (3rd grade)
 - **Ask Hillsdale about 3rd-grade "Introduction to Composition"** — on the official 2026-27 guide for 3rd grade but not in the shared Drive folder.
 - Abi: the Day-4 recite screen has a ✏️ on every memory item — paste the shorter Lazarus/Logan verse wording from your Master List into "Text the kids see."
