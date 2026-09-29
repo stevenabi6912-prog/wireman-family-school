@@ -433,3 +433,14 @@
   border-color: #e6c86a;
   font-weight: 700;
 }
+
+.review-elsewhere {
+  margin: 0.6rem 0 0;
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.review-elsewhere a {
+  color: #6c5ce7;
+  font-weight: 700;
+}

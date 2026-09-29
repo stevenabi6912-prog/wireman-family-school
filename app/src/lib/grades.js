@@ -64,6 +64,17 @@ export async function overrideGrade(gradeId, overriddenScore, maxScore = null) {
   await updateDoc(doc(db, 'grades', gradeId), patch);
 }
 
+// Undo an override — back to whatever the grader said. If the grader never
+// scored it (no answer key), there's nothing to fall back to, so it returns to
+// Abi's review queue rather than sitting in the gradebook with no score.
+export async function clearOverride(gradeId, { needsReview = false } = {}) {
+  await updateDoc(doc(db, 'grades', gradeId), {
+    overriddenScore: null,
+    needsManualReview: needsReview,
+    reviewedAt: serverTimestamp(),
+  });
+}
+
 export async function approveGrade(gradeId) {
   await updateDoc(doc(db, 'grades', gradeId), {
     needsManualReview: false,

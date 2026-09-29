@@ -323,6 +323,12 @@ export default function ParentDashboard() {
             ))}
           </ul>
         )}
+        {/* Grades the grader was sure about never land here, so say where to
+            change one of those. */}
+        <p className="review-elsewhere">
+          Want to change a score the grader got right? Every grade can be edited in the{' '}
+          <Link to="/records">gradebook</Link>.
+        </p>
       </section>
 
       <SweepPanel assignments={assignments} students={students} />

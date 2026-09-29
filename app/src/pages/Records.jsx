@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { watchAllGrades, watchStudents } from './recordsData';
-import { gradePct, scoreLabel, computeAverages, gradesToCSV } from '../lib/grades';
+import { gradePct, scoreLabel, computeAverages, gradesToCSV, overrideGrade, clearOverride } from '../lib/grades';
 import { ReportCards, AffidavitButton } from '../components/AbiExtras';
 import WorkViewer from '../components/WorkViewer';
 import './Records.css';
@@ -23,6 +23,10 @@ export default function Records() {
   const [allAssignments, setAllAssignments] = useState([]);
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [openWork, setOpenWork] = useState(null); // which grade's work is expanded
+  // Changing a score after the fact: any grade in the book can be edited, not
+  // just the ones the grader flagged. { id, score, outOf } while open.
+  const [edit, setEdit] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const unsubG = watchAllGrades(setGrades);
@@ -87,6 +91,38 @@ export default function Records() {
     [grades, subjectFilter]
   );
 
+  function startEdit(g) {
+    const current = g.overriddenScore ?? g.score;
+    setEdit({
+      id: g.id,
+      score: current == null ? '' : String(current),
+      outOf: g.maxScore > 0 ? String(g.maxScore) : '',
+    });
+  }
+
+  const editValid = edit && edit.score !== '' && Number(edit.score) >= 0 && Number(edit.outOf) > 0;
+
+  async function saveEdit(g) {
+    if (!editValid) return;
+    setSaving(true);
+    try {
+      await overrideGrade(g.id, Number(edit.score), Number(edit.outOf));
+      setEdit(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function revertEdit(g) {
+    setSaving(true);
+    try {
+      await clearOverride(g.id, { needsReview: g.score == null });
+      setEdit(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function downloadCSV() {
     const blob = new Blob([gradesToCSV(grades, assignmentTitles)], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -143,6 +179,7 @@ export default function Records() {
                         const pct = gradePct(g);
                         const low = pct != null && pct < 65;
                         const isOpen = openWork === g.id;
+                        const isEditing = edit?.id === g.id;
                         return (
                           <Fragment key={g.id}>
                             <tr className={low ? 'grade-row-low' : ''}>
@@ -153,15 +190,67 @@ export default function Records() {
                                 {pct == null ? '—' : `${pct}%`}
                                 {low && <span className="grade-low-chip">needs a look</span>}
                               </td>
-                              <td>
+                              <td className="no-print grade-row-actions">
                                 <button
-                                  className="grade-see-btn no-print"
+                                  className="grade-see-btn"
                                   onClick={() => setOpenWork(isOpen ? null : g.id)}
                                 >
                                   {isOpen ? 'hide' : '👀 see the work'}
                                 </button>
+                                <button
+                                  className="grade-see-btn grade-edit-btn"
+                                  onClick={() => (isEditing ? setEdit(null) : startEdit(g))}
+                                >
+                                  {isEditing ? 'close' : '✏️ change the score'}
+                                </button>
                               </td>
                             </tr>
+                            {isEditing && (
+                              <tr className="no-print">
+                                <td colSpan={5}>
+                                  <div className="grade-edit">
+                                    <label className="grade-edit-field">
+                                      Score
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        autoFocus
+                                        value={edit.score}
+                                        onChange={(e) => setEdit({ ...edit, score: e.target.value })}
+                                      />
+                                    </label>
+                                    <label className="grade-edit-field">
+                                      out of
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        step="any"
+                                        value={edit.outOf}
+                                        onChange={(e) => setEdit({ ...edit, outOf: e.target.value })}
+                                      />
+                                    </label>
+                                    <button className="grade-edit-save" onClick={() => saveEdit(g)} disabled={!editValid || saving}>
+                                      {saving ? 'Saving…' : 'Save this score'}
+                                    </button>
+                                    <button className="grade-edit-cancel" onClick={() => setEdit(null)}>Cancel</button>
+                                    {g.overriddenScore != null && (
+                                      <button className="grade-edit-cancel" onClick={() => revertEdit(g)} disabled={saving}>
+                                        {g.score == null
+                                          ? 'Undo my score (back to the review list)'
+                                          : `Undo my score (back to the grader's ${g.score}${g.maxScore > 0 ? `/${g.maxScore}` : ''})`}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <p className="grade-edit-note">
+                                    {g.score == null
+                                      ? 'The grader never scored this one — whatever you put here is the grade.'
+                                      : `The grader gave ${g.score}${g.maxScore > 0 ? `/${g.maxScore}` : ' points'}. Your score replaces it everywhere — averages, report cards and the transcript.`}
+                                    {g.misunderstandingSummary ? ` Its note: “${g.misunderstandingSummary}”` : ''}
+                                  </p>
+                                </td>
+                              </tr>
+                            )}
                             {isOpen && (
                               <tr className="no-print">
                                 <td colSpan={5}><WorkViewer grade={g} open /></td>
