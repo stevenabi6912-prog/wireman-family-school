@@ -156,3 +156,73 @@
   border-bottom: 2px solid #e6e2f2;
   padding-bottom: 4px;
 }
+
+/* Changing a score after it's in the book (any grade, not just flagged ones) */
+.grade-row-actions {
+  white-space: nowrap;
+}
+
+.grade-edit-btn {
+  margin-left: 0.75rem;
+}
+
+/* The table can be wider than a phone screen; keep the editor itself inside
+   the viewport so nothing wraps off the right edge. */
+.grade-edit,
+.grade-edit-note {
+  max-width: min(100%, 88vw);
+}
+
+.grade-edit {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0 0.2rem;
+}
+
+.grade-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 700;
+}
+
+.grade-edit-field input {
+  width: 92px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.95rem;
+}
+
+.grade-edit-save,
+.grade-edit-cancel {
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  background: #fafafa;
+}
+
+.grade-edit-save {
+  background: #6c5ce7;
+  border-color: #6c5ce7;
+  color: white;
+  font-weight: 700;
+}
+
+.grade-edit-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.grade-edit-note {
+  margin: 0 0 0.6rem;
+  color: #777;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
