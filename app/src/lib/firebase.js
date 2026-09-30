@@ -17,6 +17,12 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+// A photo that won't go through (flaky wifi in the school room) otherwise
+// retries for the SDK's default two minutes, freezing the upload button and
+// everything queued behind it. Fail it in half a minute so the kid gets told
+// which photo to try again.
+storage.maxUploadRetryTime = 30000;
+storage.maxOperationRetryTime = 20000;
 export const functions = getFunctions(app);
 
 if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
