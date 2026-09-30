@@ -867,3 +867,14 @@
   font-size: 0.75rem;
   color: #a33;
 }
+
+/* A photo that didn't make it — says which one, so it can be retried */
+.upload-problem {
+  margin: 4px 0;
+  padding: 6px 12px;
+  background: #fdeade;
+  border-radius: 10px;
+  color: #9c5518;
+  font-size: 0.85rem;
+  font-weight: 700;
+}

@@ -11,24 +11,38 @@ const AUTOSAVE_MS = 1500;
 
 // Typed answers + optional photo upload of paper work. Autosaves continuously
 // so a closed tab never loses anything (a third grader will close the tab).
+//
+// Every save reads the CURRENT text and photo list out of refs and goes through
+// one write queue. It used to capture them when the save was scheduled, so a
+// typing autosave that fired a moment after a photo landed wrote the older,
+// photo-less list straight over it: the chip stayed on screen, the draft lost
+// the photo, and the kid came back to fewer photos than he added.
 export default function SubmissionForm({ assignment, studentId, onSubmitted, large }) {
   const [text, setText] = useState('');
   const [files, setFiles] = useState([]); // storage paths already uploaded
   const [uploading, setUploading] = useState(false);
+  const [uploadNote, setUploadNote] = useState(null); // progress, or what failed
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
   const [submitting, setSubmitting] = useState(false);
   const timer = useRef(null);
   const loaded = useRef(false);
+  const textRef = useRef('');
+  const filesRef = useRef([]);
+  const writeQueue = useRef(Promise.resolve());
 
   useEffect(() => {
     loaded.current = false;
     setText('');
     setFiles([]);
+    textRef.current = '';
+    filesRef.current = [];
     loadSubmission(assignment.id)
       .then((sub) => {
         if (sub?.isDraft) {
           setText(sub.text ?? '');
           setFiles(sub.fileUrls ?? []);
+          textRef.current = sub.text ?? '';
+          filesRef.current = sub.fileUrls ?? [];
         }
       })
       .catch(() => {}) // no draft yet (or transient error) — start blank
@@ -38,57 +52,79 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
     return () => clearTimeout(timer.current);
   }, [assignment.id]);
 
-  function scheduleAutosave(nextText, nextFiles) {
+  // One writer, in order, always writing what's on screen right now.
+  function queueSave() {
+    setSaveState('saving');
+    writeQueue.current = writeQueue.current
+      .then(() => saveDraft(assignment, studentId, { text: textRef.current, fileUrls: filesRef.current }))
+      .then(() => setSaveState('saved'))
+      .catch(() => setSaveState('idle')); // keep the queue alive for the next save
+    return writeQueue.current;
+  }
+
+  function scheduleAutosave() {
     if (!loaded.current) return;
     setSaveState('saving');
     clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      await saveDraft(assignment, studentId, { text: nextText, fileUrls: nextFiles });
-      setSaveState('saved');
-    }, AUTOSAVE_MS);
+    timer.current = setTimeout(queueSave, AUTOSAVE_MS);
   }
 
   function onTextChange(e) {
+    textRef.current = e.target.value;
     setText(e.target.value);
-    scheduleAutosave(e.target.value, files);
+    scheduleAutosave();
   }
 
-  // Several photos can come in one pick (input is `multiple`), and the
-  // button can be tapped again for more — worksheets often span pages.
+  // Several photos can come in one pick (the input is `multiple`), and the
+  // button can be tapped again for more — worksheets often span pages. One
+  // photo failing keeps the rest and says which one to retry.
   async function onFilePicked(e) {
     const picked = Array.from(e.target.files ?? []);
+    e.target.value = ''; // so the same file can be picked again after a failure
     if (picked.length === 0) return;
     setUploading(true);
-    try {
-      const paths = [];
-      for (const file of picked) {
-        paths.push(await uploadSubmissionFile(studentId, todayISO(), file));
+    setUploadNote(null);
+    const failed = [];
+    for (let i = 0; i < picked.length; i++) {
+      setUploadNote(picked.length > 1 ? `Uploading ${i + 1} of ${picked.length}…` : 'Uploading…');
+      try {
+        const path = await uploadSubmissionFile(studentId, todayISO(), picked[i]);
+        // Attach and save each photo as it lands, so one bad photo later in the
+        // batch can't take the good ones down with it.
+        filesRef.current = [...filesRef.current, path];
+        setFiles(filesRef.current);
+        clearTimeout(timer.current); // the queued save covers whatever was pending
+        queueSave();
+      } catch (err) {
+        console.error('photo upload failed', picked[i].name, err);
+        failed.push(picked[i].name);
       }
-      const next = [...files, ...paths];
-      setFiles(next);
-      await saveDraft(assignment, studentId, { text, fileUrls: next });
-      setSaveState('saved');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
     }
+    await writeQueue.current.catch(() => {});
+    setUploading(false);
+    setUploadNote(
+      failed.length
+        ? `Couldn't add ${failed.join(', ')} — tap the button and try that one again.`
+        : null
+    );
   }
 
   async function removeFile(path) {
-    const next = files.filter((f) => f !== path);
-    setFiles(next);
-    await saveDraft(assignment, studentId, { text, fileUrls: next });
-    setSaveState('saved');
+    filesRef.current = filesRef.current.filter((f) => f !== path);
+    setFiles(filesRef.current);
+    clearTimeout(timer.current);
+    await queueSave();
   }
 
   async function onSubmit() {
     setSubmitting(true);
     try {
       clearTimeout(timer.current);
+      await writeQueue.current.catch(() => {}); // let any in-flight draft write land first
       await submitWork(assignment, studentId, {
-        responseType: files.length ? 'file' : 'text',
-        text,
-        fileUrls: files,
+        responseType: filesRef.current.length ? 'file' : 'text',
+        text: textRef.current,
+        fileUrls: filesRef.current,
       });
       onSubmitted();
     } finally {
@@ -114,9 +150,9 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
       <div className="submission-actions">
         <label className="upload-btn">
           {uploading
-            ? 'Uploading…'
+            ? (uploadNote ?? 'Uploading…')
             : files.length > 0
-              ? (large ? '📷 Add another photo' : '📷 Add another photo')
+              ? '📷 Add another photo'
               : (large ? '📷 Add a photo' : '📷 Add photos of paper work')}
           <input type="file" accept="image/*,.pdf" multiple onChange={onFilePicked} hidden disabled={uploading} />
         </label>
@@ -124,6 +160,7 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
           {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : ''}
         </span>
       </div>
+      {!uploading && uploadNote && <p className="upload-problem">⚠️ {uploadNote}</p>}
       {files.length > 0 && (
         <div className="file-list">
           {files.map((f, i) => (
