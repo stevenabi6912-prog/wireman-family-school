@@ -1,0 +1,111 @@
+.bible-section {
+  margin-top: 2rem;
+}
+
+.bible-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0.75rem;
+  line-height: 1.5;
+}
+
+.bible-group {
+  margin: 0.75rem 0 0.35rem;
+  font-weight: 800;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.bible-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bible-row {
+  background: white;
+  border-radius: 14px;
+  padding: 0.8rem 1.1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.bible-row-what {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 220px;
+  flex: 1;
+}
+
+.bible-who {
+  font-weight: 800;
+}
+
+.bible-title {
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.bible-date {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.bible-existing {
+  color: #3b6ea8;
+}
+
+.bible-saved {
+  color: #2c7a48;
+}
+
+.bible-row-score {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.bible-row-score input[type="number"] {
+  width: 80px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
+.bible-outof-sep {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.bible-note {
+  width: min(320px, 60vw);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.bible-row-score button {
+  border: 1px solid #6c5ce7;
+  background: #6c5ce7;
+  color: white;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.bible-row-score button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
