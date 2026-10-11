@@ -29,6 +29,7 @@ import AbiTheme from '../components/AbiTheme';
 import { PALETTES } from '../config/themes';
 import { PEOPLE, PARENTS } from '../config/students';
 import VersusGames from '../components/VersusGames';
+import MoveToDate from '../components/MoveToDate';
 import { watchMyGames, awaitingMe } from '../lib/versus';
 import './ParentDashboard.css';
 
@@ -284,6 +285,7 @@ export default function ParentDashboard() {
                   <span className="missing-actions">
                     <button onClick={() => rescheduleAssignment(a.id, today)}>Do today</button>
                     <button onClick={() => rescheduleAssignment(a.id, tomorrowISO())}>Tomorrow</button>
+                    <MoveToDate assignment={a} compact />
                     <button className="waive-btn" onClick={() => waiveAssignment(a.id)}>Waive</button>
                   </span>
                 </li>

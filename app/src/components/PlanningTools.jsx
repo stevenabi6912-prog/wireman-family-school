@@ -7,6 +7,7 @@ import { ref, listAll, getMetadata, getDownloadURL, uploadBytes } from 'firebase
 import { db, storage } from '../lib/firebase';
 import { todayISO, resolveContentUrl } from '../lib/assignments';
 import { DONE_STATUSES, rescheduleAssignment, waiveAssignment, tomorrowISO } from '../lib/parentData';
+import MoveToDate from './MoveToDate';
 import { resolveTheme } from '../config/themes';
 import './PlanningTools.css';
 
@@ -202,6 +203,7 @@ export function WeekPreview({ students, order }) {
                                 <span className="weekprev-actions">
                                   <button title="A day earlier" onClick={() => shift(a, -1)}>◀</button>
                                   <button title="A day later" onClick={() => shift(a, 1)}>▶</button>
+                                  <MoveToDate assignment={a} compact onMoved={() => setBump((b) => b + 1)} />
                                   <button className="note-btn" title="Note for the kid" onClick={() => editNote(a).then((ok) => ok && setBump((b) => b + 1))}>📌</button>
                                 </span>
                               </div>
