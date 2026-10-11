@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   onSnapshot,
+  setDoc,
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -99,4 +100,30 @@ export function gradesToCSV(grades, assignmentTitleById = {}) {
     ]);
   }
   return rows.map((r) => r.map((c) => `"${String(c)}"`).join(',')).join('\n');
+}
+
+// A grade Abi enters herself, for work the auto-grader never sees — Bible is
+// read-and-discuss with Mom, so there's no submission to grade and no key to
+// grade it against. Her score IS the grade (not an override of anything), so
+// it lands in `score` and the gradebook shows it without the parent star.
+export async function setParentGrade(assignment, { score, maxScore, note = '' }) {
+  await setDoc(
+    doc(db, 'grades', assignment.id),
+    {
+      assignmentId: assignment.id,
+      studentId: assignment.studentId,
+      subjectId: assignment.subjectId,
+      score,
+      maxScore,
+      perQuestion: [],
+      misunderstandingSummary: note,
+      confidence: 'high',
+      needsManualReview: false,
+      reviewReason: null,
+      gradedBy: 'abi',
+      overriddenScore: null,
+      gradedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }

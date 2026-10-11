@@ -238,14 +238,14 @@ export default function Records() {
                                       <button className="grade-edit-cancel" onClick={() => revertEdit(g)} disabled={saving}>
                                         {g.score == null
                                           ? 'Undo my score (back to the review list)'
-                                          : `Undo my score (back to the grader's ${g.score}${g.maxScore > 0 ? `/${g.maxScore}` : ''})`}
+                                          : `Undo this change (back to ${g.gradedBy === 'abi' ? 'your' : "the grader's"} ${g.score}${g.maxScore > 0 ? `/${g.maxScore}` : ''})`}
                                       </button>
                                     )}
                                   </div>
                                   <p className="grade-edit-note">
                                     {g.score == null
                                       ? 'The grader never scored this one — whatever you put here is the grade.'
-                                      : `The grader gave ${g.score}${g.maxScore > 0 ? `/${g.maxScore}` : ' points'}. Your score replaces it everywhere — averages, report cards and the transcript.`}
+                                      : `${g.gradedBy === 'abi' ? 'You scored this' : 'The grader gave it'} ${g.score}${g.maxScore > 0 ? `/${g.maxScore}` : ' points'}. What you save here replaces it everywhere — averages, report cards and the transcript.`}
                                     {g.misunderstandingSummary ? ` Its note: “${g.misunderstandingSummary}”` : ''}
                                   </p>
                                 </td>

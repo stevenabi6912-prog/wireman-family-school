@@ -95,7 +95,7 @@ async function main() {
   }
 
   const subjects = [
-    { id: 'bible', name: 'Bible', contentSource: 'physical-book', gradable: false },
+    { id: 'bible', name: 'Bible', contentSource: 'physical-book', gradable: true },
     { id: 'math', name: 'Math', contentSource: 'video-link-placeholder', gradable: true, platformUrl: 'https://digital.demmelearning.com/' },
     { id: 'ela', name: 'Grammar & Writing', contentSource: 'storage-pdf', gradable: true },
     { id: 'history', name: 'History', contentSource: 'storage-pdf', gradable: false },

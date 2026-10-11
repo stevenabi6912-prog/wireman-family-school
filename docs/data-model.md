@@ -58,7 +58,7 @@ and is still read as her fallback.)
 ## `subjects/{subjectId}`
 
 ```
-{ id: "bible", name: "Bible", contentSource: "physical-book", gradable: false }
+{ id: "bible", name: "Bible", contentSource: "physical-book", gradable: true }
 { id: "math", name: "Math", contentSource: "video-link-placeholder", gradable: true, platformUrl: "https://digital.demmelearning.com/" }
 { id: "ela", name: "Grammar & Writing", contentSource: "storage-pdf", gradable: true }
 { id: "history", name: "History", contentSource: "storage-pdf", gradable: false }
@@ -89,8 +89,13 @@ The unit of "one thing to do." One per student per subject per scheduled day (us
 ```
 
 - `itemType: "bible"` and `itemType: "memorization"` never get a `contentPath`/`keyPath` —
-  they render as a plain checklist row with a "recited/completed to parent" checkbox,
-  no submission form, no grading. Bible references the physical AiG book by title only.
+  they render as a plain checklist row with a "recited/completed to parent" checkbox and
+  no submission form. Nothing is turned in, so the auto-grader never sees them; Bible is
+  graded by the parent instead, from the "🙏 Bible grades" panel on the dashboard, which
+  writes an ordinary `grades/{assignmentId}` doc with `gradedBy: "abi"` and the score in
+  `score` (not `overriddenScore` — it isn't overriding anything). From there it behaves
+  like every other grade: subject average, report cards, transcript, editable in the
+  gradebook.
 - `itemType: "video"` is the Math-U-See placeholder: an `externalUrl` field renders as a
   link/embed once the family supplies it. Until then the UI shows "link coming soon" and
   the item still requires a manual "done" checkoff so the day isn't blocked.

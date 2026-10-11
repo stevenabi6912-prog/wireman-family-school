@@ -30,6 +30,7 @@ import { PALETTES } from '../config/themes';
 import { PEOPLE, PARENTS } from '../config/students';
 import VersusGames from '../components/VersusGames';
 import MoveToDate from '../components/MoveToDate';
+import BibleGrading from '../components/BibleGrading';
 import { watchMyGames, awaitingMe } from '../lib/versus';
 import './ParentDashboard.css';
 
@@ -332,6 +333,13 @@ export default function ParentDashboard() {
           <Link to="/records">gradebook</Link>.
         </p>
       </section>
+
+      <BibleGrading
+        assignments={assignments}
+        grades={grades}
+        students={students}
+        order={STUDENT_ORDER}
+      />
 
       <SweepPanel assignments={assignments} students={students} />
 
