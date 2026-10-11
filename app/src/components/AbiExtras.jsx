@@ -3,10 +3,23 @@ import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from 'fireb
 import { db } from '../lib/firebase';
 import { resolveTheme } from '../config/themes';
 import { gradePct, scoreLabel } from '../lib/grades';
+import MoveToDate, { MoveAllToDate } from './MoveToDate';
 import './AbiExtras.css';
 
 const KIDS = ['luke', 'layla', 'logan', 'lazarus'];
 const DONE = new Set(['submitted', 'graded', 'waived']);
+
+// Titles abbreviate ("Ch. 8", "Vol. 2") but nobody types that way, so match on
+// a normalized form: punctuation out, "chapter" and "ch" the same word.
+function normalizeForSearch(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .replace(/\bchapters?\b/g, 'ch')
+    .replace(/\bvolumes?\b/g, 'vol')
+    .replace(/\blessons?\b/g, 'lesson')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
 
 // ---- Search everything: assignments and grades, one box ----
 export function SearchBox({ students, grades }) {
@@ -15,7 +28,7 @@ export function SearchBox({ students, grades }) {
   const [busy, setBusy] = useState(false);
 
   async function run() {
-    const needle = q.trim().toLowerCase();
+    const needle = normalizeForSearch(q);
     if (needle.length < 2) return;
     setBusy(true);
     try {
@@ -25,7 +38,7 @@ export function SearchBox({ students, grades }) {
       const hits = [];
       snap.forEach((d) => {
         const a = d.data();
-        if (`${a.title} ${a.instructions ?? ''}`.toLowerCase().includes(needle)) {
+        if (normalizeForSearch(`${a.title} ${a.instructions ?? ''}`).includes(needle)) {
           hits.push({ id: d.id, ...a, grade: scoreByAssignment[d.id] });
         }
       });
@@ -50,18 +63,36 @@ export function SearchBox({ students, grades }) {
       </div>
       {results !== null && (
         results.length === 0 ? <p className="search-empty">No matches.</p> : (
-          <ul className="search-results">
-            {results.map((a) => (
-              <li key={a.id}>
-                <span>{resolveTheme(a.studentId, students?.[a.studentId]?.theme).avatar}</span>
-                <span className="search-title">{a.title}</span>
-                <span className="search-meta">
-                  {a.scheduledDate} · {DONE.has(a.status) ? '✅' : a.status}
-                  {a.grade && ` · ${scoreLabel(a.grade, { pending: 'needs your score' })}`}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* A chapter's reading and test across both 8th graders is one
+                search and one date, not four trips through the week view. */}
+            <MoveAllToDate
+              assignments={results.filter((a) => !DONE.has(a.status))}
+              noun="unfinished items"
+              onMoved={(dateISO) => setResults((rs) =>
+                rs.map((r) => (DONE.has(r.status) ? r : { ...r, scheduledDate: dateISO })))}
+            />
+            <ul className="search-results">
+              {results.map((a) => (
+                <li key={a.id}>
+                  <span>{resolveTheme(a.studentId, students?.[a.studentId]?.theme).avatar}</span>
+                  <span className="search-title">{a.title}</span>
+                  <span className="search-meta">
+                    {a.scheduledDate} · {DONE.has(a.status) ? '✅' : a.status}
+                    {a.grade && ` · ${scoreLabel(a.grade, { pending: 'needs your score' })}`}
+                  </span>
+                  {!DONE.has(a.status) && (
+                    <MoveToDate
+                      assignment={a}
+                      compact
+                      onMoved={(item, dateISO) => setResults((rs) =>
+                        rs.map((r) => (r.id === item.id ? { ...r, scheduledDate: dateISO } : r)))}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
         )
       )}
     </section>
