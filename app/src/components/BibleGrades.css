@@ -1,0 +1,63 @@
+.biblegrades-card {
+  background: #fff;
+  border: 1px solid #e4e2ef;
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin: 16px 0;
+}
+
+.biblegrades-hint { font-size: 0.85rem; opacity: 0.75; margin: 6px 0; }
+
+.biblegrades-kid h4 { margin: 10px 0 4px; }
+
+.biblegrades-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid #f0eef8;
+  padding: 7px 0;
+  font-size: 0.9rem;
+}
+
+.biblegrades-week { min-width: 260px; }
+
+.biblegrades-score { font-weight: 800; color: #2e7d32; }
+
+.biblegrades-btn {
+  border: 1px solid #6c5ce7;
+  background: #fff;
+  color: #6c5ce7;
+  border-radius: 8px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.biblegrades-save { background: #6c5ce7; color: #fff; }
+.biblegrades-save:disabled { opacity: 0.5; }
+
+.biblegrades-cancel { border: none; background: none; color: #888; text-decoration: underline; cursor: pointer; font: inherit; }
+
+.biblegrades-form { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+
+.biblegrades-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: 2px;
+}
+
+.biblegrades-form label em { font-style: normal; opacity: 0.6; }
+
+.biblegrades-form input {
+  width: 56px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font: inherit;
+}
+
+.biblegrades-total { font-weight: 800; }
