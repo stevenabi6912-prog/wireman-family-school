@@ -131,7 +131,16 @@ export default function StudentChecklist() {
     // waits at the bottom until they come back to it.
     const list = [...catchUp, ...assignments];
     const sinks = (a) => (a.skipped && !DONE_STATUSES.has(a.status) ? 1 : 0);
-    return list.map((a, i) => [a, i]).sort((x, y) => sinks(x[0]) - sinks(y[0]) || x[1] - y[1]).map(([a]) => a);
+    // among skipped items, most recently skipped goes LAST (a pending
+    // serverTimestamp reads as "just now"), so repeated skips cycle the list
+    const skipOrder = (a) => a.skippedAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER;
+    return list
+      .map((a, i) => [a, i])
+      .sort((x, y) =>
+        sinks(x[0]) - sinks(y[0]) ||
+        (sinks(x[0]) ? skipOrder(x[0]) - skipOrder(y[0]) : 0) ||
+        x[1] - y[1])
+      .map(([a]) => a);
   }, [assignments, overdueRaw, browsingOtherDay]);
 
   // Land on the exact card an email link pointed at: scroll it into view and

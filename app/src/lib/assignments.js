@@ -164,6 +164,9 @@ export async function submitWork(assignment, studentId, payload) {
 export async function skipForNow(assignmentId) {
   await updateDoc(doc(db, 'assignments', assignmentId), {
     skipped: true,
+    // each skip re-stamps the time, so skipping again always sends the card
+    // to the very bottom — multiple skips rotate instead of jamming
+    skippedAt: serverTimestamp(),
     startedAt: deleteField(),
     updatedAt: serverTimestamp(),
   });

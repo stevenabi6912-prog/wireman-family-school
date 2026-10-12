@@ -65,7 +65,7 @@ service cloud.firestore {
         // students may only flip status between not_started/in_progress/submitted,
         // plus the time-tracking fields their own app writes
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'updatedAt', 'startedAt', 'actualMinutes', 'skipped']) &&
+          .hasOnly(['status', 'updatedAt', 'startedAt', 'actualMinutes', 'skipped', 'skippedAt']) &&
         request.resource.data.status in ['not_started', 'in_progress', 'submitted'] &&
         // never allowed to touch keyPath or scheduledDate regardless
         request.resource.data.keyPath == resource.data.keyPath &&
