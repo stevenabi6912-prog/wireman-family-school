@@ -8,6 +8,7 @@ import {
   setDoc,
   getDoc,
   serverTimestamp,
+  deleteField,
   orderBy,
   limit,
 } from 'firebase/firestore';
@@ -156,6 +157,16 @@ export async function submitWork(assignment, studentId, payload) {
     { merge: true }
   );
   await completeAssignment(assignment);
+}
+
+// Push the active item to the end of today's list. The clock resets so the
+// minutes stay honest when they come back to it hours later.
+export async function skipForNow(assignmentId) {
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    skipped: true,
+    startedAt: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function uploadSubmissionFile(studentId, dateISO, file) {

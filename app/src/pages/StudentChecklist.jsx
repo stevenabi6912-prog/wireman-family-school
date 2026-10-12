@@ -126,7 +126,12 @@ export default function StudentChecklist() {
     const catchUp = overdueRaw
       .filter((a) => !DONE_STATUSES.has(a.status) || isToday(a.updatedAt))
       .map((a) => ({ ...a, catchUp: true }));
-    return [...catchUp, ...assignments];
+    // "Skip for now" sinks an unfinished item below everything else (stable
+    // otherwise), so the next subject becomes active and the skipped one
+    // waits at the bottom until they come back to it.
+    const list = [...catchUp, ...assignments];
+    const sinks = (a) => (a.skipped && !DONE_STATUSES.has(a.status) ? 1 : 0);
+    return list.map((a, i) => [a, i]).sort((x, y) => sinks(x[0]) - sinks(y[0]) || x[1] - y[1]).map(([a]) => a);
   }, [assignments, overdueRaw, browsingOtherDay]);
 
   // Land on the exact card an email link pointed at: scroll it into view and

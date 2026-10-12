@@ -878,3 +878,17 @@
   font-size: 0.85rem;
   font-weight: 700;
 }
+
+/* skip-for-now on the active card */
+.skip-btn {
+  align-self: flex-start;
+  border: 1px dashed #b9b0e8;
+  background: #fff;
+  color: #6c5ce7;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}

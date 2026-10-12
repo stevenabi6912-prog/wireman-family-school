@@ -4,8 +4,9 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
+import WorkViewer from './WorkViewer';
 import { MathSprint, SubjectWarmUp } from './KidExtras';
-import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, todayISO } from '../lib/assignments';
+import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, skipForNow, todayISO } from '../lib/assignments';
 import { reopenAssignment } from '../lib/parentData';
 
 const TYPE_LABELS = {
@@ -68,6 +69,7 @@ export default function AssignmentCard({
   // state: 'locked' | 'active' | 'done'
   const isActive = state === 'active';
   const [reopening, setReopening] = useState(false);
+  const [seeWork, setSeeWork] = useState(false);
 
   // Abi can always send an item back. A kid can only take back an accidental
   // tap on a check-off item that hasn't been graded yet.
@@ -124,12 +126,16 @@ export default function AssignmentCard({
 
       {canParentReopen && (
         <div className="reopen-row">
+          <button className="reopen-btn" onClick={() => setSeeWork((v) => !v)}>
+            {seeWork ? 'hide their work' : '👀 See their work'}
+          </button>
           <button className="reopen-btn" onClick={reopen} disabled={reopening}>
             {reopening ? 'Reopening…' : '↩️ Let them do this again'}
           </button>
           <span className="reopen-hint">Clears the score and the timer — it goes back on their list.</span>
         </div>
       )}
+      {canParentReopen && seeWork && <WorkViewer assignmentId={assignment.id} open />}
 
       {canKidUndo && (
         <div className="reopen-row">
@@ -146,6 +152,14 @@ export default function AssignmentCard({
               ▶ {assignment.itemType === 'worksheet'
                 ? (large ? "I have my worksheet — start!" : "I've got my worksheet out — start the clock")
                 : (large ? "We're starting!" : "Tap when you actually start — this is what times it")}
+            </button>
+          )}
+
+          {/* "We need to do Bible later today" — push this card to the end of
+              the list and move on; its clock resets so time stays honest. */}
+          {!parentView && (
+            <button className="skip-btn" onClick={() => skipForNow(assignment.id)}>
+              ⏭ {large ? 'Do it later!' : "Skip for now — I'll come back to it"}
             </button>
           )}
 

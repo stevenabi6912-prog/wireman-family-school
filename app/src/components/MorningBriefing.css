@@ -251,3 +251,20 @@
   font-size: 0.82rem;
   color: #888;
 }
+
+/* set today's real start time */
+.start-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.start-set input[type='time'] {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 0.82rem;
+}

@@ -53,6 +53,20 @@ export default function MorningBriefing({ students, byStudent, order, reviewCoun
           {pauseMinutes > 0 && <span className="pause-chip">⏸ paused {pauseMinutes}m today</span>}
           <button onClick={() => pause(30)} title="Shift the kids' pacing targets 30 minutes later">⏸ +30m</button>
           <button onClick={() => pause(60)} title="Shift the kids' pacing targets an hour later">+1h</button>
+          {/* Started late? Set the real start time and every pacing target
+              shifts to match — nobody reads "way behind" all day. */}
+          <label className="start-set" title="If school started late, set when it really started — pacing recalculates from there (plan start is 8:30)">
+            🕗 started at
+            <input
+              type="time"
+              defaultValue="08:30"
+              onChange={(e) => {
+                const [h, m] = e.target.value.split(':').map(Number);
+                const mins = Math.max(0, h * 60 + m - (8 * 60 + 30));
+                pause(mins - pauseMinutes);
+              }}
+            />
+          </label>
           {pauseMinutes > 0 && <button onClick={() => pause(0)}>clear</button>}
         </div>
       </div>
