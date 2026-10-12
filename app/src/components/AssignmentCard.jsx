@@ -6,7 +6,7 @@ import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
 import WorkViewer from './WorkViewer';
 import { MathSprint, SubjectWarmUp } from './KidExtras';
-import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, skipForNow, todayISO } from '../lib/assignments';
+import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, skipForNow, submitWork, uploadSubmissionFile, todayISO } from '../lib/assignments';
 import { reopenAssignment } from '../lib/parentData';
 
 const TYPE_LABELS = {
@@ -235,15 +235,15 @@ export default function AssignmentCard({
             <EchoRecorder assignment={assignment} studentId={studentId} large={large} />
           )}
 
-          {CHECKOFF_TYPES.has(assignment.itemType) ? (
+          {assignment.itemType === 'bible' ? (
+            <BibleJournalCheckoff assignment={assignment} studentId={studentId} large={large} onDone={markDone} />
+          ) : CHECKOFF_TYPES.has(assignment.itemType) ? (
             <button className="submit-btn" onClick={markDone}>
               {assignment.itemType === 'memorization'
                 ? 'I recited it to Mom ✓'
-                : assignment.itemType === 'bible'
-                  ? 'We finished our Bible lesson ✓'
-                  : assignment.itemType === 'audio'
-                    ? 'I said it all out loud ✓'
-                    : 'I finished it ✓'}
+                : assignment.itemType === 'audio'
+                  ? 'I said it all out loud ✓'
+                  : 'I finished it ✓'}
             </button>
           ) : (
             <SubmissionForm
@@ -425,4 +425,55 @@ function MomSays({ path }) {
   }
   if (url) return <audio className="chapter-audio" controls autoPlay src={url} />;
   return <button className="video-link" onClick={load}>▶ Mom says…</button>;
+}
+
+// Bible stays a check-off — but a journal photo turns it into real, gradable
+// work: the photo becomes a submission, and the grader scores it against the
+// week's Name and verse (which live right in the card's instructions).
+function BibleJournalCheckoff({ assignment, studentId, large, onDone }) {
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function onPick(e) {
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
+    setUploading(true);
+    try {
+      const paths = [];
+      for (const f of picked) paths.push(await uploadSubmissionFile(studentId, todayISO(), f));
+      setFiles((prev) => [...prev, ...paths]);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function finish() {
+    setBusy(true);
+    try {
+      if (files.length) {
+        await submitWork(assignment, studentId, { responseType: 'file', text: '', fileUrls: files });
+      } else {
+        await onDone();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="bible-checkoff">
+      <label className="upload-btn">
+        {uploading ? 'Uploading…' : large ? '📷 Add my journal page' : '📷 Add a photo of my journal page (optional)'}
+        <input type="file" accept="image/*" multiple onChange={onPick} hidden disabled={uploading} />
+      </label>
+      {files.length > 0 && (
+        <span className="file-count">{files.length} page{files.length > 1 ? 's' : ''} attached — it\'ll get graded!</span>
+      )}
+      <button className="submit-btn" onClick={finish} disabled={busy || uploading}>
+        {busy ? 'Turning in…' : files.length ? 'Turn in my journal ✓' : 'We finished our Bible lesson ✓'}
+      </button>
+    </div>
+  );
 }

@@ -322,7 +322,7 @@ async function runGrading(submissionId, submission) {
   // clean-up items (cleanupFor set), and entrepreneurship — Luke's daily
   // business-admin work is graded on completion, not answers, and a manual
   // review every school day would bury Abi's queue.
-  if (!assignment.keyPath && !assignment.cleanupFor && assignment.subjectId !== 'entrepreneurship') {
+  if (!assignment.keyPath && !assignment.cleanupFor && !['entrepreneurship', 'bible'].includes(assignment.subjectId)) {
     await gradeRef.set({
       assignmentId: submission.assignmentId,
       studentId: submission.studentId,
