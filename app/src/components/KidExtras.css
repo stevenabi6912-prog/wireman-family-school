@@ -51,6 +51,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  /* explicit dark text: the cream card sits on themed pages, and dark themes
+     (space!) set near-white inherited text — "you can't see the words" */
+  color: #4a3000;
   background: #fff8dc;
   border: 2px solid #ffd700;
   border-radius: 14px;

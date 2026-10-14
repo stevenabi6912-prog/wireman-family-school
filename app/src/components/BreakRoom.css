@@ -11,6 +11,7 @@
 
 .break-sheet {
   background: white;
+  color: #2a2a2a; /* don't inherit a dark theme's light text onto a white sheet */
   border-radius: 22px;
   padding: 1.25rem 1.4rem;
   width: 100%;
