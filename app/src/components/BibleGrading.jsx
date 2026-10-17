@@ -46,6 +46,7 @@ export default function BibleGrading({ assignments, grades, students, order }) {
     const score = Number(d.score);
     const outOf = Number(d.outOf ?? defaultOutOf);
     if (d.score === '' || d.score == null || !(outOf > 0) || Number.isNaN(score)) return;
+    if (score > outOf && !window.confirm(`${score} out of ${outOf} — more than full marks? OK for extra credit, or Cancel to fix it (if you meant a percent, enter points instead).`)) return;
     setSaving(a.id);
     try {
       await setParentGrade(a, { score, maxScore: outOf, note: (d.note ?? '').trim() });

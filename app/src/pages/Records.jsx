@@ -106,6 +106,7 @@ export default function Records() {
     if (!editValid) return;
     setSaving(true);
     try {
+      if (Number(edit.score) > Number(edit.outOf) && !window.confirm(`${edit.score} out of ${edit.outOf} — more than full marks? OK for extra credit, or Cancel to fix it.`)) return;
       await overrideGrade(g.id, Number(edit.score), Number(edit.outOf));
       setEdit(null);
     } finally {

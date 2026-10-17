@@ -67,7 +67,12 @@ export default function ReviewCard({ grade, studentName }) {
           </>
         )}
         <button
-          onClick={() => canSave && overrideGrade(grade.id, Number(value), needsOutOf ? Number(outOf) : null)}
+          onClick={() => {
+            if (!canSave) return;
+            const max = needsOutOf ? Number(outOf) : grade.maxScore;
+            if (max > 0 && Number(value) > max && !window.confirm(`${value} out of ${max} — more than full marks? OK for extra credit, or Cancel to fix it.`)) return;
+            overrideGrade(grade.id, Number(value), needsOutOf ? Number(outOf) : null);
+          }}
           disabled={!canSave}
         >
           Save my score
