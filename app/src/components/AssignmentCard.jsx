@@ -6,7 +6,7 @@ import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
 import WorkViewer from './WorkViewer';
 import { MathSprint, SubjectWarmUp } from './KidExtras';
-import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, skipForNow, submitWork, uploadSubmissionFile, todayISO } from '../lib/assignments';
+import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, skipForNow, unskip, submitWork, uploadSubmissionFile, todayISO } from '../lib/assignments';
 import { reopenAssignment } from '../lib/parentData';
 
 const TYPE_LABELS = {
@@ -123,6 +123,15 @@ export default function AssignmentCard({
           {state === 'done' ? '✅' : state === 'locked' ? '🔒' : `~${assignment.estimatedMinutes} min`}
         </span>
       </div>
+
+      {assignment.skipped && state !== 'done' && !isActive && (
+        <div className="reopen-row">
+          <button className="reopen-btn" onClick={() => unskip(assignment.id)}>
+            ⤴️ Bring it back — do it now
+          </button>
+          <span className="reopen-hint">It was skipped for later; this puts it back in its spot.</span>
+        </div>
+      )}
 
       {canParentReopen && (
         <div className="reopen-row">

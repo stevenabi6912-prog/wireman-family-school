@@ -33,7 +33,10 @@ export default function BibleGrading({ assignments, grades, students, order }) {
   // then recently scored ones so a number can be changed right here.
   const { toScore, scored } = useMemo(() => {
     const bible = (assignments ?? [])
-      .filter((a) => a.subjectId === 'bible' && DONE.has(a.status))
+      // itemType check: Luke's daily TFM slot shares the subject but is
+      // graded by TFM's own teachers — Abi uploads the trimester report
+      // card instead, so it never belongs in this queue.
+      .filter((a) => a.subjectId === 'bible' && a.itemType === 'bible' && DONE.has(a.status))
       .sort((a, b) => (a.scheduledDate < b.scheduledDate ? 1 : -1));
     return {
       toScore: bible.filter((a) => !gradeFor[a.id]),

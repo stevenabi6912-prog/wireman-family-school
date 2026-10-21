@@ -172,6 +172,15 @@ export async function skipForNow(assignmentId) {
   });
 }
 
+// Undo an accidental skip — the card returns to its normal spot in the list.
+export async function unskip(assignmentId) {
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    skipped: deleteField(),
+    skippedAt: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function uploadSubmissionFile(studentId, dateISO, file) {
   const path = `submissions/${studentId}/${dateISO}/${Date.now()}-${file.name}`;
   await uploadBytes(ref(storage, path), file);
