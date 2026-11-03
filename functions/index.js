@@ -107,6 +107,13 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
       'and calibrate expectations to the student\'s grade level.',
       parentNotes ? `\nThe parent has set these grading preferences — follow them:\n${parentNotes}` : '',
       '',
+      '',
+      'SCORING DISCIPLINE — these rules are absolute:',
+      '1. perQuestion must list EVERY problem the student was assigned, one entry each.',
+      '2. If the page or the parent wrote a note assigning a subset (e.g. "odds only", "evens only", "just 1-10"), grade ONLY that subset — perQuestion lists only those problems and maxScore is the subset size.',
+      '3. maxScore MUST equal perQuestion.length exactly, and score MUST equal the count of entries with correct:true. No half points and no adjustments outside perQuestion — if something deserves partial credit, say so in the note but mark it true or false.',
+      '4. Before responding, recount: tally the true entries, confirm it equals score, confirm perQuestion.length equals maxScore. A mismatch is a wrong grade.',
+      '',
       'Respond with ONLY a JSON object, no other text, in this exact shape:',
       '{"score": <number correct>, "maxScore": <number of questions graded>,',
       ' "perQuestion": [{"questionNumber": "<n>", "correct": true|false, "note": "<short note if wrong, else empty>"}],',
@@ -352,6 +359,18 @@ async function runGrading(submissionId, submission) {
       keyB64,
       parentNotes,
     });
+
+    // Backstop: the per-question list is the grade — the headline numbers
+    // must agree with it (the model occasionally invented half-points or a
+    // maxScore unrelated to the questions it actually marked).
+    if (Array.isArray(result.perQuestion) && result.perQuestion.length > 0) {
+      const tally = result.perQuestion.filter((q) => q.correct === true).length;
+      if (result.score !== tally || result.maxScore !== result.perQuestion.length) {
+        console.warn(`grade reconciled for ${submission.assignmentId}: ${result.score}/${result.maxScore} -> ${tally}/${result.perQuestion.length}`);
+        result.score = tally;
+        result.maxScore = result.perQuestion.length;
+      }
+    }
 
     await gradeRef.set({
       assignmentId: submission.assignmentId,
