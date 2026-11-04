@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import './YearTrail.css';
 
@@ -11,9 +11,12 @@ const DONE = new Set(['submitted', 'graded', 'waived']);
 export default function YearTrail({ studentId, avatar }) {
   const [days, setDays] = useState(null); // [{dayIndex, date, done}]
 
+  // Live, not fetch-once: in a tab that stays open for days, a one-shot
+  // trail freezes on whatever day it loaded ("it's been on the same day
+  // since Monday"). The checklist is already live; the trail walks with it.
   useEffect(() => {
     if (!studentId) return;
-    getDocs(query(collection(db, 'assignments'), where('studentId', '==', studentId))).then((snap) => {
+    return onSnapshot(query(collection(db, 'assignments'), where('studentId', '==', studentId)), (snap) => {
       const byDay = {};
       snap.docs.forEach((d) => {
         const a = d.data();
