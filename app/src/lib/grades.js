@@ -34,6 +34,9 @@ export function watchAllGrades(callback) {
 export function computeAverages(grades) {
   const acc = {};
   for (const g of grades) {
+    // a second-chance grade lifts its ORIGINAL grade (capped at passing);
+    // counting it again here would double-dip the average
+    if (g.retryOf) continue;
     const pct = gradePct(g);
     if (pct == null) continue;
     acc[g.studentId] = acc[g.studentId] ?? {};

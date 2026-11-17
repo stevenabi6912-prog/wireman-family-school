@@ -376,6 +376,7 @@ async function runGrading(submissionId, submission) {
       assignmentId: submission.assignmentId,
       studentId: submission.studentId,
       subjectId: assignment.subjectId,
+      retryOf: assignment.retryOf ?? null,
       score: result.score,
       maxScore: result.maxScore,
       perQuestion: result.perQuestion ?? [],
@@ -388,6 +389,33 @@ async function runGrading(submissionId, submission) {
       gradedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     await assignmentSnap.ref.update({ status: 'graded' });
+
+    // Second chance: a retry's better score lifts the ORIGINAL grade, capped
+    // at passing (family.retryCapPct, default 70) — Abi's extra-credit rule.
+    if (assignment.retryOf && result.score != null && result.maxScore > 0) {
+      try {
+        const origRef = db.doc(`grades/${assignment.retryOf}`);
+        const origSnap = await origRef.get();
+        if (origSnap.exists) {
+          const orig = origSnap.data();
+          const famSnap = await db.doc('families/wireman').get();
+          const cap = famSnap.data()?.retryCapPct ?? 70;
+          const retryPct = (result.score / result.maxScore) * 100;
+          const origPct = orig.maxScore > 0 ? (((orig.overriddenScore ?? orig.score) ?? 0) / orig.maxScore) * 100 : 0;
+          const liftedPct = Math.min(retryPct, cap);
+          if (orig.maxScore > 0 && liftedPct > origPct) {
+            const lifted = Math.round((orig.maxScore * liftedPct) / 100 * 10) / 10;
+            await origRef.update({
+              overriddenScore: lifted,
+              retryNote: `Second chance taken: scored ${result.score}/${result.maxScore} on the retry — grade lifted to ${Math.round(liftedPct)}% (capped at ${cap}%).`,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`retry lift failed for ${assignment.retryOf}:`, String(err).slice(0, 200));
+      }
+    }
 
     // Post-grade follow-ups on a real miss (below 80% with a noted
     // misunderstanding). Each is isolated in its own try/catch — a failure

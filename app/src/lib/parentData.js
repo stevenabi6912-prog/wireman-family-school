@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  setDoc,
   query,
   where,
   onSnapshot,
@@ -74,6 +75,35 @@ export async function reopenAssignment(assignmentId) {
     actualMinutes: deleteField(),
     updatedAt: serverTimestamp(),
   });
+}
+
+// A failed assignment goes back on the kid's list as a second chance.
+// When the retry is graded, the grading function lifts the ORIGINAL grade
+// up to the retry's percent, capped at passing (family.retryCapPct, default
+// 70) — extra credit that can bring a fail up to passing, never above it.
+export async function assignRetry(assignment) {
+  const retryId = `${assignment.id}-retry`;
+  await setDoc(doc(db, 'assignments', retryId), {
+    studentId: assignment.studentId,
+    dayIndex: assignment.dayIndex ?? null,
+    sequence: assignment.sequence ?? 50,
+    scheduledDate: todayISO(),
+    originalDate: assignment.scheduledDate ?? todayISO(),
+    status: 'not_started',
+    waivedReason: null,
+    subjectId: assignment.subjectId,
+    itemType: assignment.itemType,
+    estimatedMinutes: assignment.estimatedMinutes ?? 20,
+    title: `Second chance: ${assignment.title}`,
+    instructions: `Mom's giving you another shot at this one! Redo it carefully — a better score here brings your grade up. ${assignment.instructions ?? ''}`.trim(),
+    contentPath: assignment.contentPath ?? null,
+    keyPath: assignment.keyPath ?? null,
+    externalUrl: assignment.externalUrl ?? null,
+    retryOf: assignment.id,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return retryId;
 }
 
 export function tomorrowISO() {

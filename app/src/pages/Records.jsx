@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { watchAllGrades, watchStudents } from './recordsData';
 import { gradePct, scoreLabel, computeAverages, gradesToCSV, overrideGrade, clearOverride } from '../lib/grades';
+import { assignRetry } from '../lib/parentData';
 import { ReportCards, AffidavitButton } from '../components/AbiExtras';
 import WorkViewer from '../components/WorkViewer';
 import './Records.css';
@@ -26,6 +27,7 @@ export default function Records() {
   // Changing a score after the fact: any grade in the book can be edited, not
   // just the ones the grader flagged. { id, score, outOf } while open.
   const [edit, setEdit] = useState(null);
+  const [retried, setRetried] = useState({}); // gradeId -> second chance sent
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -204,6 +206,20 @@ export default function Records() {
                                 >
                                   {isEditing ? 'close' : '✏️ change the score'}
                                 </button>
+                                {low && !g.retryOf && (
+                                  <button
+                                    className="grade-see-btn grade-retry-btn"
+                                    disabled={retried[g.id]}
+                                    onClick={async () => {
+                                      const a = await getDoc(doc(db, 'assignments', g.assignmentId));
+                                      if (!a.exists()) return;
+                                      await assignRetry({ id: g.assignmentId, ...a.data() });
+                                      setRetried((r) => ({ ...r, [g.id]: true }));
+                                    }}
+                                  >
+                                    {retried[g.id] ? 'on their list ✓' : '🔁 second chance'}
+                                  </button>
+                                )}
                               </td>
                             </tr>
                             {isEditing && (

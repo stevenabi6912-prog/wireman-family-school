@@ -226,3 +226,6 @@
   font-size: 0.85rem;
   line-height: 1.45;
 }
+
+.grade-retry-btn { border-color: #b8860b; color: #8a5410; }
+.grade-retry-btn:disabled { opacity: 0.6; cursor: default; }
