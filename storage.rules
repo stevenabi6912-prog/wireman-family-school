@@ -21,14 +21,10 @@ service firebase.storage {
 
     // Curriculum PDFs: any signed-in family member (student or parent) can read.
     // Only the parent (via console/admin tooling) writes — students never upload curriculum.
-    // Built PDFs (print packets, portfolio) and uploaded report cards: parents only.
+    // Built PDFs (print packets, portfolio): parents only.
     match /reports/{allPaths=**} {
       allow read: if isParent();
     }
-    match /reportcards/{allPaths=**} {
-      allow read, write: if isParent();
-    }
-
     match /curriculum/{allPaths=**} {
       allow read: if isSignedIn();
       allow write: if isParent();
