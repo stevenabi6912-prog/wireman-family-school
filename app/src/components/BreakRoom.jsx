@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { BREAK_SECONDS, loadGame, saveGame } from '../lib/breaks';
 import { makeSudoku, makeWordSearch, WORD_THEMES, SCRAMBLES, TRIVIA, TYPING_WORDS } from './breakGames';
 import VersusGames from './VersusGames';
+import { BreakPicker } from './games/Lobby';
 import { watchMyGames, awaitingMe } from '../lib/versus';
 import { playDing, playFanfare } from '../lib/sounds';
 import './BreakRoom.css';
@@ -67,16 +68,7 @@ export default function BreakRoom({
         {timeUp ? (
           <p className="break-over">⏰ Break's over — back to it! You've got this.</p>
         ) : !game ? (
-          <div className="break-picker">
-            <button onClick={() => setGame('sudoku')}>🔢 Sudoku</button>
-            <button onClick={() => setGame('wordsearch')}>🔍 Word Search</button>
-            <button onClick={() => setGame('builder')}>🔤 Word Builder</button>
-            <button onClick={() => setGame('trivia')}>🏰 Castle Trivia</button>
-            <button onClick={() => setGame('typing')}>⌨️ Typing Sprint</button>
-            <button className="break-versus" onClick={() => setGame('versus')}>
-              ⚔️ Play someone{myTurnCount > 0 && <span className="break-turnbadge">{myTurnCount}</span>}
-            </button>
-          </div>
+          <BreakPicker onPick={setGame} myTurnCount={myTurnCount} />
         ) : (
           <>
             <button className="break-back" onClick={() => setGame(null)}>&larr; Games</button>

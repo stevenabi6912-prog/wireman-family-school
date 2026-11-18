@@ -8,6 +8,7 @@ import Records from './pages/Records';
 import ReportCards from './pages/ReportCards';
 import BusinessHQ from './pages/BusinessHQ';
 import MemoryBook from './pages/MemoryBook';
+import GameLab from './pages/GameLab';
 import UpdateNudge from './components/UpdateNudge';
 
 export default function App() {
@@ -81,6 +82,14 @@ export default function App() {
             element={
               <RequireRole role="parent">
                 <StudentChecklist />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/gamelab"
+            element={
+              <RequireRole role="parent">
+                <GameLab />
               </RequireRole>
             }
           />
