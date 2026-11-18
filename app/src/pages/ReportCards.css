@@ -1,0 +1,168 @@
+.rc-screen {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  background: #f6f4f0;
+  min-height: 100dvh;
+}
+
+.rc-printonly { display: none; }
+
+.rc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.rc-toolbar h1 { margin: 0; font-size: 1.6rem; flex: 1; }
+.rc-back { color: #555; text-decoration: none; }
+
+.rc-controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.rc-controls select,
+.rc-controls button,
+.rc-student-bar button {
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.rc-controls button:disabled,
+.rc-student-bar button:disabled { opacity: 0.5; cursor: default; }
+
+.rc-systems { display: flex; border: 1px solid #ddd; border-radius: 999px; overflow: hidden; background: white; }
+.rc-systems button { border: none; border-radius: 0; }
+.rc-systems button.rc-on { background: #2f4a6b; color: white; font-weight: 600; }
+.rc-controls .rc-print-all { background: #2f4a6b; border-color: #2f4a6b; color: white; font-weight: 600; }
+
+.rc-note { color: #666; font-size: 0.92rem; margin: 0 0 1rem; }
+
+.rc-student { margin-bottom: 2.25rem; }
+.rc-student-bar { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; font-size: 1.1rem; }
+.rc-student-bar button { margin-left: auto; }
+.rc-avatar { font-size: 1.4rem; }
+
+/* The card itself: reads as a sheet of paper on screen, and is the page in print. */
+.rc-card {
+  background: white;
+  border: 1px solid #d9d4c8;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 2.2rem 2.4rem 2rem;
+  color: #1c1c1c;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.rc-head { text-align: center; border-bottom: 3px double #333; padding-bottom: 0.8rem; }
+.rc-school { font-size: 1.7rem; font-weight: 700; letter-spacing: 0.02em; }
+.rc-doc-title { font-size: 1.05rem; letter-spacing: 0.3em; text-transform: uppercase; margin-top: 0.25rem; }
+.rc-year { font-size: 0.95rem; color: #444; margin-top: 0.2rem; }
+
+.rc-card dl { margin: 0; }
+.rc-card dt { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: #555; font-family: system-ui, sans-serif; }
+.rc-card dd { margin: 0.1rem 0 0; font-size: 1.05rem; font-weight: 700; }
+
+.rc-info { display: grid; grid-template-columns: 2fr 1fr 2fr 3fr; gap: 0.75rem; padding: 0.9rem 0 0.2rem; }
+
+.rc-card h2 {
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 1.3rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #333;
+}
+
+.rc-attendance { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+
+.rc-table { width: 100%; border-collapse: collapse; font-size: 0.98rem; }
+.rc-table th,
+.rc-table td { border: 1px solid #777; padding: 0.38rem 0.6rem; text-align: center; }
+.rc-table th { font-family: system-ui, sans-serif; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.rc-table th:first-child,
+.rc-table td:first-child { text-align: left; }
+.rc-letter { font-weight: 700; }
+.rc-table .rc-tfm,
+.rc-table .rc-empty { font-style: italic; font-size: 0.9rem; }
+.rc-scale { font-size: 0.78rem; color: #444; margin: 0.4rem 0 0; }
+
+.rc-comments {
+  display: block;
+  width: 100%;
+  border: 1px dashed #aaa;
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+.rc-save { font-family: system-ui, sans-serif; font-size: 0.8rem; color: #2e7d4f; margin: 0.25rem 0 0; min-height: 1.1em; white-space: pre; }
+.rc-save-error { color: #b3261e; }
+
+.rc-comments-print { margin: 0; white-space: pre-wrap; line-height: 1.5; }
+.rc-comments-blank span { display: block; height: 1.9rem; border-bottom: 1px solid #999; }
+.rc-outside-note { font-size: 0.85rem; margin: 0.8rem 0 0; }
+
+.rc-sign { display: flex; gap: 2rem; margin-top: 3rem; font-size: 0.8rem; font-family: system-ui, sans-serif; color: #333; }
+.rc-sign div { flex: 2; }
+.rc-sign .rc-sign-date { flex: 1; }
+.rc-sign span { display: block; border-top: 1px solid #222; margin-bottom: 0.3rem; }
+
+/* Attaching another program's report card (screen only) */
+.rc-outside { background: white; border-radius: 12px; padding: 0.9rem 1.2rem 1rem; margin-top: 0.75rem; }
+.rc-outside h3 { margin: 0 0 0.2rem; font-size: 1rem; }
+.rc-outside p { margin: 0 0 0.6rem; color: #666; font-size: 0.88rem; }
+.rc-outside ul { list-style: none; margin: 0 0 0.7rem; padding: 0; }
+.rc-outside li { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid #eee; }
+.rc-outside li a,
+.rc-outside li > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rc-outside li button { border: 1px solid #ddd; background: white; border-radius: 999px; padding: 0.25rem 0.8rem; font: inherit; font-size: 0.82rem; color: #b3261e; cursor: pointer; }
+.rc-upload { display: inline-block; border: 1px dashed #2f4a6b; color: #2f4a6b; border-radius: 999px; padding: 0.45rem 1rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.rc-upload input { display: none; }
+.rc-upload-off { opacity: 0.5; cursor: default; }
+.rc-outside .rc-upload-error { color: #b3261e; margin: 0.5rem 0 0; }
+
+.rc-attachment { margin: 0.75rem 0 0; background: white; border-radius: 12px; padding: 0.9rem 1.2rem 1.1rem; }
+.rc-attachment figcaption { font-size: 0.85rem; color: #555; margin-bottom: 0.6rem; }
+.rc-attachment img { display: block; max-width: 100%; max-height: 520px; margin: 0 auto; }
+
+/* Chrome honours the named page (Letter, even margins); Safari ignores it and
+   uses the print dialog's own paper and margins, which is fine. Named rather
+   than a bare @page so the Records printout elsewhere in the app is untouched. */
+@page reportcard {
+  size: letter portrait;
+  margin: 0.6in;
+}
+
+@media print {
+  .rc-noprint { display: none !important; }
+  .rc-printonly { display: block; }
+
+  body.rc-page { background: white; }
+  body.rc-page #root { min-height: 0; }
+  /* the app-wide "update available" pill */
+  body.rc-page #root > button { display: none !important; }
+
+  .rc-screen { background: white; padding: 0; margin: 0; max-width: none; min-height: 0; }
+
+  /* One student per sheet. The first printed card must not ask for a break
+     or some browsers lead with a blank page. */
+  .rc-student { page: reportcard; margin: 0; break-before: page; page-break-before: always; }
+  .rc-student.rc-first { break-before: auto; page-break-before: auto; }
+
+  .rc-card { border: none; border-radius: 0; box-shadow: none; padding: 0; font-size: 11pt; }
+  .rc-table tr,
+  .rc-sign,
+  .rc-info,
+  .rc-attendance { break-inside: avoid; page-break-inside: avoid; }
+  .rc-sign { margin-top: 0.75in; }
+
+  .rc-attachment { break-before: page; page-break-before: always; margin: 0; padding: 0; border-radius: 0; }
+  .rc-attachment figcaption { color: #000; font-family: Georgia, serif; }
+  /* tall enough to fill the sheet, short enough that the caption plus the
+     photo never spill onto a second one under either browser's margins */
+  .rc-attachment img { max-height: 8.6in; }
+}

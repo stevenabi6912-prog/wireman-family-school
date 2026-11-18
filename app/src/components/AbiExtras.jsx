@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { resolveTheme } from '../config/themes';
-import { gradePct, scoreLabel } from '../lib/grades';
+import { scoreLabel } from '../lib/grades';
 import MoveToDate, { MoveAllToDate } from './MoveToDate';
 import './AbiExtras.css';
 
@@ -95,118 +95,6 @@ export function SearchBox({ students, grades }) {
           </>
         )
       )}
-    </section>
-  );
-}
-
-// ---- Quarterly report cards: real data + Abi's comments, printable ----
-const TERMS = [
-  { id: 'q1', label: 'Quarter 1', start: '2026-08-11', end: '2026-10-22' },
-  { id: 'q2', label: 'Quarter 2', start: '2026-10-23', end: '2027-01-21' },
-  { id: 'q3', label: 'Quarter 3', start: '2027-01-22', end: '2027-04-01' },
-  { id: 'q4', label: 'Quarter 4', start: '2027-04-02', end: '2027-06-03' },
-];
-
-export function ReportCards({ students, grades, allAssignments, subjectNames }) {
-  const [term, setTerm] = useState(TERMS[0]);
-  const [comments, setComments] = useState({});
-  const [loadedTerm, setLoadedTerm] = useState(null);
-
-  // Pull saved comments the first time a term is shown
-  useMemo(() => {
-    if (loadedTerm === term.id) return;
-    setLoadedTerm(term.id);
-    (async () => {
-      const next = {};
-      for (const kid of KIDS) {
-        try {
-          const snap = await getDoc(doc(db, 'reportCards', `${kid}-${term.id}`));
-          next[kid] = snap.data()?.comments ?? '';
-        } catch { next[kid] = ''; }
-      }
-      setComments(next);
-    })();
-  }, [term, loadedTerm]);
-
-  const byKid = useMemo(() => {
-    const out = {};
-    for (const kid of KIDS) {
-      const inTerm = (allAssignments ?? []).filter(
-        (a) => a.studentId === kid && a.scheduledDate >= term.start && a.scheduledDate <= term.end && DONE.has(a.status)
-      );
-      const days = new Set(inTerm.map((a) => a.scheduledDate));
-      const minutes = inTerm.reduce((s, a) => s + (a.actualMinutes ?? a.estimatedMinutes ?? 0), 0);
-      const gradeRows = {};
-      for (const g of grades ?? []) {
-        if (g.studentId !== kid) continue;
-        const when = g.gradedAt?.toDate?.();
-        if (!when) continue;
-        const iso = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')}`;
-        if (iso < term.start || iso > term.end) continue;
-        // Ungraded (or no "out of" on file) can't average — skip it rather
-        // than dragging the whole subject to NaN.
-        const pct = gradePct(g);
-        if (pct == null) continue;
-        const row = (gradeRows[g.subjectId] ??= { sum: 0, n: 0 });
-        row.sum += pct / 100;
-        row.n++;
-      }
-      out[kid] = { days: days.size, hours: (minutes / 60).toFixed(1), done: inTerm.length, gradeRows };
-    }
-    return out;
-  }, [allAssignments, grades, term]);
-
-  async function saveComment(kid) {
-    await setDoc(doc(db, 'reportCards', `${kid}-${term.id}`), {
-      studentId: kid,
-      term: term.id,
-      comments: comments[kid] ?? '',
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-  }
-
-  return (
-    <section className="reportcards-section">
-      <h2 className="no-print">
-        Report cards
-        <select className="term-select" value={term.id} onChange={(e) => setTerm(TERMS.find((t) => t.id === e.target.value))}>
-          {TERMS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
-        <button className="records-csv" onClick={() => window.print()}>🖨 Print</button>
-      </h2>
-      {KIDS.map((kid) => {
-        const k = byKid[kid];
-        return (
-          <div key={kid} className="reportcard">
-            <h3>{students?.[kid]?.name ?? kid} — {term.label}, 2026–27 · Wireman Family School</h3>
-            <p className="reportcard-stats">
-              Days attended: <strong>{k.days}</strong> · Hours: <strong>{k.hours}</strong> · Items completed: <strong>{k.done}</strong>
-            </p>
-            {Object.keys(k.gradeRows).length > 0 && (
-              <table className="records-table reportcard-grades">
-                <thead><tr><th>Subject</th><th>Average</th><th>Graded items</th></tr></thead>
-                <tbody>
-                  {Object.entries(k.gradeRows).map(([subj, row]) => (
-                    <tr key={subj}>
-                      <td>{subjectNames[subj] ?? subj}</td>
-                      <td>{Math.round((row.sum / row.n) * 100)}%</td>
-                      <td>{row.n}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <textarea
-              className="reportcard-comments"
-              rows={3}
-              placeholder="Teacher comments…"
-              value={comments[kid] ?? ''}
-              onChange={(e) => setComments((c) => ({ ...c, [kid]: e.target.value }))}
-              onBlur={() => saveComment(kid)}
-            />
-          </div>
-        );
-      })}
     </section>
   );
 }

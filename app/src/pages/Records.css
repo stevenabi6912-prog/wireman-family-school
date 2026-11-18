@@ -229,3 +229,27 @@
 
 .grade-retry-btn { border-color: #b8860b; color: #8a5410; }
 .grade-retry-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Report cards live on their own page now; this is the way in. */
+.reportcards-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: white;
+  border-radius: 14px;
+  padding: 1.1rem 1.3rem;
+  margin-top: 1.75rem;
+}
+.reportcards-link h2 { margin: 0 0 0.25rem; font-size: 1.2rem; }
+.reportcards-link p { margin: 0; color: #666; font-size: 0.92rem; }
+.reportcards-link-btn {
+  background: #2f4a6b;
+  color: white;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  white-space: nowrap;
+}

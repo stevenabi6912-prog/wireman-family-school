@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { watchAllGrades, watchStudents } from './recordsData';
 import { gradePct, scoreLabel, computeAverages, gradesToCSV, overrideGrade, clearOverride } from '../lib/grades';
 import { assignRetry } from '../lib/parentData';
-import { ReportCards, AffidavitButton } from '../components/AbiExtras';
+import { AffidavitButton } from '../components/AbiExtras';
 import WorkViewer from '../components/WorkViewer';
 import './Records.css';
 
@@ -322,7 +322,13 @@ export default function Records() {
         )}
       </section>
 
-      <ReportCards students={students} grades={grades} allAssignments={allAssignments} subjectNames={SUBJECT_NAMES} />
+      <section className="reportcards-link no-print">
+        <div>
+          <h2>Report cards</h2>
+          <p>Quarter, trimester and full-year cards for each student — with your comments, outside report cards, and a clean printout.</p>
+        </div>
+        <Link to="/report-cards" className="reportcards-link-btn">📄 Open report cards</Link>
+      </section>
 
       <section className="transcript-section">
         <h2>8th Grade Transcript — 2026–27</h2>
