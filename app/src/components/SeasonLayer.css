@@ -1,0 +1,78 @@
+/* Sits behind everything on the kid's page (z-index -1 inside the screen's
+   own stacking context): visible in the margins and between cards, never on
+   top of the work. */
+.season-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.season-bit {
+  position: absolute;
+  left: var(--x);
+  font-size: var(--size);
+  opacity: 0.6;
+  will-change: transform;
+  animation-duration: var(--dur);
+  animation-delay: var(--delay);
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+/* falling: snow, leaves, petals */
+.season-fall .season-bit { top: -8vh; animation-name: season-fall; }
+@keyframes season-fall {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(var(--sway), 58vh) rotate(160deg); }
+  100% { transform: translate(0, 116vh) rotate(320deg); }
+}
+
+/* rising: hearts, butterflies, bubbles */
+.season-rise .season-bit { top: 104vh; animation-name: season-rise; }
+@keyframes season-rise {
+  0% { transform: translate(0, 0) rotate(-8deg); }
+  50% { transform: translate(var(--sway), -58vh) rotate(8deg); }
+  100% { transform: translate(0, -116vh) rotate(-8deg); }
+}
+
+/* drifting across: kites, penguins, footballs */
+.season-drift .season-bit { left: -8vw; top: var(--y); animation-name: season-drift; }
+@keyframes season-drift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(58vw, var(--sway)); }
+  100% { transform: translate(116vw, 0); }
+}
+
+/* twinkling in place: stars, lights */
+.season-twinkle .season-bit {
+  top: var(--y);
+  animation-name: season-twinkle;
+  animation-duration: calc(var(--dur) / 5);
+  animation-timing-function: ease-in-out;
+}
+@keyframes season-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.8); }
+  50% { opacity: 0.85; transform: scale(1.15); }
+}
+
+/* the name chip under the date in the header */
+.season-chip {
+  margin-top: 0.3rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.season-chip-off { opacity: 0.6; text-decoration: line-through; }
+
+@media (prefers-reduced-motion: reduce) {
+  .season-bit { animation: none !important; top: var(--y) !important; left: var(--x) !important; opacity: 0.35; }
+}

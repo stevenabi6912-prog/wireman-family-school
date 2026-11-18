@@ -894,3 +894,100 @@
 }
 
 .bible-checkoff { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+/* ---- seasonal layer needs its own stacking context to sit behind cards ---- */
+.checklist-screen { isolation: isolate; }
+
+/* ---- finish-time forecast ---- */
+.finish-forecast {
+  margin: 0.25rem 0 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--t-text, #2a2a2a);
+  opacity: 0.85;
+}
+
+.checklist-large .finish-forecast { font-size: 1.1rem; }
+
+/* ---- micro-interactions ---- */
+/* each check-off: the runner hops and a shine sweeps the bar */
+.progress-runner-hop {
+  display: inline-block;
+  animation: runner-hop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes runner-hop {
+  0% { transform: translateY(0) rotate(0); }
+  40% { transform: translateY(-14px) rotate(-10deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+.progress-fill { position: relative; }
+
+.progress-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.55) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: progress-shimmer 0.9s ease-out;
+}
+
+@keyframes progress-shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* a card that was just finished gets a stamp; the next one slides up */
+.assignment-just-done { animation: card-done 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes card-done {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.025); }
+  100% { transform: scale(1); }
+}
+
+.assignment-just-done .assignment-time {
+  display: inline-block;
+  animation: done-stamp 0.55s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes done-stamp {
+  0% { transform: scale(2.8) rotate(-18deg); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+
+.assignment-just-active { animation: card-arrive 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes card-arrive {
+  0% { transform: translateY(12px); opacity: 0.6; }
+  100% { transform: none; opacity: 1; }
+}
+
+.submit-btn:not(:disabled):hover { filter: brightness(1.06); transform: translateY(-1px); }
+
+/* the buddy just grew */
+.buddy-grew {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #fff6d6, #ffe9f2);
+  border: 2px solid #f0d67a;
+  color: #4a3000;
+  border-radius: 14px;
+  padding: 10px 16px;
+  margin: 10px 0;
+  font-weight: 800;
+  animation: card-arrive 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.buddy-grew-emoji {
+  font-size: 2rem;
+  animation: bounce 1.2s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-runner-hop, .progress-shimmer, .assignment-just-done,
+  .assignment-just-done .assignment-time, .assignment-just-active,
+  .buddy-grew, .buddy-grew-emoji { animation: none; }
+  .progress-shimmer { display: none; }
+}

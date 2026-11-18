@@ -71,6 +71,20 @@ export default function AssignmentCard({
   const [reopening, setReopening] = useState(false);
   const [seeWork, setSeeWork] = useState(false);
 
+  // A card that just changed state gets a moment of animation (a stamp when
+  // it's finished, a slide when it's up next). Only on a live change — cards
+  // that were already done when the page loaded stay still.
+  const prevState = useRef(state);
+  const [flash, setFlash] = useState(null);
+  useEffect(() => {
+    if (prevState.current === state) return undefined;
+    prevState.current = state;
+    if (state !== 'done' && state !== 'active') return undefined;
+    setFlash(state);
+    const t = setTimeout(() => setFlash(null), 900);
+    return () => clearTimeout(t);
+  }, [state]);
+
   // Abi can always send an item back. A kid can only take back an accidental
   // tap on a check-off item that hasn't been graded yet.
   const canParentReopen = parentView && state === 'done';
@@ -111,7 +125,7 @@ export default function AssignmentCard({
   return (
     <div
       id={`item-${assignment.id}`}
-      className={`assignment-card assignment-${state} ${large ? 'assignment-large' : ''} ${focused ? 'assignment-focused' : ''}`}
+      className={`assignment-card assignment-${state} ${large ? 'assignment-large' : ''} ${focused ? 'assignment-focused' : ''} ${flash ? `assignment-just-${flash}` : ''}`}
     >
       <div className="assignment-header">
         <span className="assignment-type">{assignment.catchUp && state !== 'done' ? '⏰ ' : ''}{TYPE_LABELS[assignment.itemType] ?? assignment.itemType}</span>

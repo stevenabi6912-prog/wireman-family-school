@@ -1,0 +1,38 @@
+/* One shared palette. Each component used to hardcode its own colors, and a
+   light card that forgot to set its text color would inherit a dark theme's
+   near-white text (the unreadable treasure chest on the Space theme). New
+   work uses these; every light surface on a themed page pins --ink. */
+:root {
+  --ink: #2a2a2a;         /* body text on light surfaces */
+  --ink-soft: #5d5d66;    /* secondary text */
+  --ink-faint: #8a8a94;   /* hints, timestamps */
+  --paper: #ffffff;       /* cards */
+  --paper-soft: #f6f5fa;  /* insets, form backgrounds */
+  --line: #e4e2ef;        /* hairlines and card borders */
+  --brand: #6c5ce7;       /* parent-side accent */
+  --good: #2e7d32;
+  --good-soft: #d9f0d6;
+  --warn: #9c5518;
+  --warn-soft: #fdf0e3;
+  --bad: #b3402f;
+  --bad-soft: #fdecea;
+  --gold: #ffd75e;
+  --radius: 14px;
+  --radius-pill: 999px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  --shadow-lift: 0 6px 22px rgba(0, 0, 0, 0.14);
+}
+
+/* Light surfaces that live inside themed (possibly dark) kid pages: never
+   inherit the page's text color. */
+.assignment-card,
+.trail-box,
+.wr-body,
+.records-board,
+.kudos-choice,
+.explorer-box,
+.bonus-open-btn,
+.verse-card,
+.streak-badge {
+  color: var(--ink);
+}

@@ -109,3 +109,15 @@
   opacity: 0.45;
   cursor: default;
 }
+
+.bible-older {
+  margin-top: 10px;
+  border: 1px dashed var(--line);
+  background: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}

@@ -156,7 +156,11 @@ export function SurpriseChest({ studentId, large }) {
     try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
   });
 
+  const [opening, setOpening] = useState(false);
+  const [fresh, setFresh] = useState(false); // opened just now (vs. already open on load)
+
   function open() {
+    if (opening) return;
     const roll = Math.random();
     let prize;
     if (roll < 0.2) {
@@ -167,21 +171,34 @@ export function SurpriseChest({ studentId, large }) {
     } else {
       prize = { kind: 'fact', text: FACTS[Math.floor(Math.random() * FACTS.length)] };
     }
-    playFanfare();
+    // The prize is decided (and saved) up front; the rattle is just theater.
     localStorage.setItem(key, JSON.stringify(prize));
-    setOpened(prize);
+    setOpening(true);
+    setTimeout(() => {
+      playFanfare();
+      setFresh(true);
+      setOpened(prize);
+      setOpening(false);
+    }, 950);
   }
 
   return (
     <div className="chest-zone">
       {opened ? (
-        <div className="chest-prize">
+        <div className={`chest-prize ${fresh ? 'chest-prize-fresh' : ''}`}>
+          {fresh && (
+            <span className="chest-sparkles" aria-hidden="true">
+              {['✨', '⭐', '💫', '✨', '🌟', '💫', '⭐', '✨'].map((sp, i) => (
+                <span key={i} style={{ '--a': `${i * 45}deg` }}>{sp}</span>
+              ))}
+            </span>
+          )}
           <span className="chest-prize-emoji">{opened.kind === 'token' ? '🎟️' : opened.kind === 'joke' ? '😂' : '🤯'}</span>
           <p>{opened.text}</p>
         </div>
       ) : (
-        <button className="chest-btn" onClick={open}>
-          🧰 {large ? 'Open your treasure chest!' : 'You earned a surprise — open the chest!'}
+        <button className={`chest-btn ${opening ? 'chest-opening' : ''}`} onClick={open}>
+          🧰 {opening ? (large ? 'Opening…' : 'It\'s opening…') : large ? 'Open your treasure chest!' : 'You earned a surprise — open the chest!'}
         </button>
       )}
     </div>

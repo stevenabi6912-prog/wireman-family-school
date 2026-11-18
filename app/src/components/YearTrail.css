@@ -68,3 +68,30 @@
   font-size: 1.3rem;
   margin-left: 4px;
 }
+
+/* the study buddy tags along on the current day */
+.trail-here { position: relative; }
+
+.trail-buddy {
+  position: absolute;
+  right: -15px;
+  bottom: -4px;
+  font-size: 0.85rem;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+  animation: trail-buddy-hop 1.6s ease infinite 0.25s;
+}
+
+@keyframes trail-buddy-hop {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-5px) rotate(6deg); }
+}
+
+.trail-buddy-line {
+  margin: -0.2rem 0 0.6rem;
+  font-size: 0.85rem;
+  color: #5d5d66;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trail-here, .trail-buddy { animation: none; }
+}

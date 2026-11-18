@@ -9,6 +9,8 @@ import nodemailer from 'nodemailer';
 
 admin.initializeApp();
 
+export { buildDayPacket, pushOnAssignment, pushOnGrade } from './extras.js';
+
 // The Claude API caps PDF documents at ~100 pages; curriculum teacher guides
 // run to 300+. keyPath/contentPath carry a "#page=N" anchor pointing at the
 // relevant answers, so slice a window of pages around the anchor instead of

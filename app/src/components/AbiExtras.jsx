@@ -22,7 +22,7 @@ function normalizeForSearch(text) {
 }
 
 // ---- Search everything: assignments and grades, one box ----
-export function SearchBox({ students, grades }) {
+export function SearchBox({ students }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -33,17 +33,18 @@ export function SearchBox({ students, grades }) {
     setBusy(true);
     try {
       const snap = await getDocs(collection(db, 'assignments'));
-      const scoreByAssignment = {};
-      for (const g of grades ?? []) scoreByAssignment[g.assignmentId] = g;
       const hits = [];
       snap.forEach((d) => {
         const a = d.data();
         if (normalizeForSearch(`${a.title} ${a.instructions ?? ''}`).includes(needle)) {
-          hits.push({ id: d.id, ...a, grade: scoreByAssignment[d.id] });
+          hits.push({ id: d.id, ...a });
         }
       });
       hits.sort((x, y) => (x.scheduledDate < y.scheduledDate ? -1 : 1));
-      setResults(hits.slice(0, 25));
+      // a grade lives at grades/{assignmentId}, so only the hits get looked up
+      const top = hits.slice(0, 25);
+      const gradeSnaps = await Promise.all(top.map((h) => getDoc(doc(db, 'grades', h.id)).catch(() => null)));
+      setResults(top.map((h, i) => ({ ...h, grade: gradeSnaps[i]?.exists() ? { id: h.id, ...gradeSnaps[i].data() } : undefined })));
     } catch {
       setResults([]);
     }

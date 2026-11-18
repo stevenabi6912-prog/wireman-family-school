@@ -173,12 +173,18 @@ service cloud.firestore {
 
     // ---- sibling kudos: a kid sends AS themselves, the recipient reads ----
     match /kudos/{id} {
-      allow read: if isParent() || isStudent(resource.data.to);
+      // the sender can see what they sent too (their week-in-review counts it)
+      allow read: if isParent() || isStudent(resource.data.to) || isStudent(resource.data.from);
       allow create: if isParent() || isStudent(request.resource.data.from);
       allow update, delete: if isParent();
     }
 
     // ---- report cards: Abi's quarterly write-ups, hers alone ----
+    // ---- browser push subscriptions: each parent's own devices ----
+    match /pushSubs/{id} {
+      allow read, write: if isParent();
+    }
+
     match /reportCards/{id} {
       allow read, write: if isParent();
     }

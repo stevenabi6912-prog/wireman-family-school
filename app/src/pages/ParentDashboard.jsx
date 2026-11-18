@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  watchAssignmentsThroughToday,
+  watchDashboardAssignments,
   watchStudents,
   waiveAssignment,
   rescheduleAssignment,
@@ -13,7 +13,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { todayISO } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { projectYear } from '../lib/reflow';
-import { watchAllGrades } from '../lib/grades';
+import { watchDashboardGrades } from '../lib/grades';
 import { computeStruggleFlags } from '../lib/struggles';
 import DaysOff from '../components/DaysOff';
 import ReviewCard from '../components/ReviewCard';
@@ -29,7 +29,10 @@ import AbiTheme from '../components/AbiTheme';
 import { PALETTES } from '../config/themes';
 import { PEOPLE, PARENTS } from '../config/students';
 import VersusGames from '../components/VersusGames';
-import MoveToDate from '../components/MoveToDate';
+import MoveToDate, { MoveAllToDate } from '../components/MoveToDate';
+import LiveBoard from '../components/LiveBoard';
+import PacketBuilder from '../components/PacketBuilder';
+import PushToggle from '../components/PushToggle';
 import BibleGrading from '../components/BibleGrading';
 import { watchMyGames, awaitingMe } from '../lib/versus';
 import './ParentDashboard.css';
@@ -55,6 +58,9 @@ export default function ParentDashboard() {
   const [grades, setGrades] = useState([]);
   const [calOpen, setCalOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [packetOpen, setPacketOpen] = useState(false);
+  const [missingKid, setMissingKid] = useState('all');
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [myGames, setMyGames] = useState([]);
 
   // Games the kids have started against this parent — the badge is the only
@@ -66,9 +72,9 @@ export default function ParentDashboard() {
   const pendingMoves = myGames.filter((g) => g.status !== 'over' && awaitingMe(g, personId)).length;
 
   useEffect(() => {
-    const unsubA = watchAssignmentsThroughToday(setAssignments);
+    const unsubA = watchDashboardAssignments(setAssignments);
     const unsubS = watchStudents(setStudents);
-    const unsubG = watchAllGrades(setGrades);
+    const unsubG = watchDashboardGrades(setGrades);
     projectYear().then(setYear).catch(() => {});
     return () => {
       unsubA();
@@ -111,6 +117,22 @@ export default function ParentDashboard() {
       ),
     [byStudent]
   );
+
+  const shownMissing = useMemo(
+    () => (missingKid === 'all' ? allMissing : allMissing.filter((a) => a.studentId === missingKid)),
+    [allMissing, missingKid]
+  );
+
+  async function bulkMissing(action, label) {
+    const n = shownMissing.length;
+    if (!n || !window.confirm(`${label} — all ${n} item${n === 1 ? '' : 's'} shown?`)) return;
+    setBulkBusy(true);
+    try {
+      for (const a of shownMissing) await action(a);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   // "All caught up" is a lie if today's list still has open items sitting on
   // it — say so in the SAME sentence instead of leaving a second card (the
@@ -179,6 +201,7 @@ export default function ParentDashboard() {
           <button className="dash-logout" onClick={() => setThemeOpen(true)}>✨</button>
           <BugReport studentId={null} large={false} />
           <button className="dash-logout" onClick={() => setCalOpen(true)}>📅 Calendar</button>
+          <button className="dash-logout" onClick={() => setPacketOpen(true)}>🖨️ Print packet</button>
           {pendingMoves > 0 && (
             <button
               className="dash-logout dash-games-chip"
@@ -206,7 +229,9 @@ export default function ParentDashboard() {
         reviewCount={reviewQueue.length}
       />
 
-      <SearchBox students={students} grades={grades} />
+      <LiveBoard students={students} byStudent={byStudent} order={STUDENT_ORDER} />
+
+      <SearchBox students={students} />
 
       <ReadingAssessment students={students} order={STUDENT_ORDER} />
 
@@ -272,8 +297,23 @@ export default function ParentDashboard() {
               : '✅ Nobody has missing work. All caught up!'}
           </p>
         ) : (
+          <>
+          <div className="missing-bulk">
+            <select value={missingKid} onChange={(e) => setMissingKid(e.target.value)}>
+              <option value="all">Everyone ({allMissing.length})</option>
+              {STUDENT_ORDER.filter((id) => byStudent[id]?.overdue.length).map((id) => (
+                <option key={id} value={id}>{students[id]?.name} ({byStudent[id].overdue.length})</option>
+              ))}
+            </select>
+            <span className="missing-bulk-label">All {shownMissing.length} shown:</span>
+            <button disabled={bulkBusy || !shownMissing.length} onClick={() => bulkMissing((a) => rescheduleAssignment(a.id, today), 'Move to today')}>Do today</button>
+            <button disabled={bulkBusy || !shownMissing.length} onClick={() => bulkMissing((a) => rescheduleAssignment(a.id, tomorrowISO()), 'Move to tomorrow')}>Tomorrow</button>
+            <MoveAllToDate assignments={shownMissing} noun="missing items" />
+            <button className="waive-btn" disabled={bulkBusy || !shownMissing.length} onClick={() => bulkMissing((a) => waiveAssignment(a.id), 'Waive (excuse for good)')}>Waive</button>
+            {bulkBusy && <span className="missing-bulk-label">Working…</span>}
+          </div>
           <ul className="missing-list">
-            {allMissing.map((a) => {
+            {shownMissing.map((a) => {
               const s = students[a.studentId];
               const days = daysOverdue(a.scheduledDate);
               return (
@@ -293,6 +333,7 @@ export default function ParentDashboard() {
               );
             })}
           </ul>
+          </>
         )}
       </section>
 
@@ -366,8 +407,11 @@ export default function ParentDashboard() {
 
       <EmailPrefs />
 
+      <PushToggle personId={personId} />
+
       {year?.family && <DaysOff family={year.family} onChanged={refreshYear} />}
 
+      {packetOpen && <PacketBuilder students={students} order={STUDENT_ORDER} onClose={() => setPacketOpen(false)} />}
       {calOpen && <SchoolCalendar onClose={() => setCalOpen(false)} />}
       {themeOpen && (
         <AbiTheme personId={personId} current={myTheme} onClose={() => { setThemeOpen(false); refreshYear(); }} />
@@ -375,6 +419,8 @@ export default function ParentDashboard() {
 
       <p className="records-link-row">
         <Link to="/records" className="records-link">📄 Gradebook & printable records</Link>
+        <Link to="/report-cards" className="records-link">🎓 Report cards</Link>
+        <Link to="/memory-book" className="records-link">📔 Memory book</Link>
       </p>
     </div>
   );

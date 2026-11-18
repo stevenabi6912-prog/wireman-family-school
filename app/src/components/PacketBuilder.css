@@ -1,0 +1,50 @@
+.packet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 40, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5vh 16px;
+  z-index: 60;
+  overflow-y: auto;
+}
+
+.packet-sheet {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 16px;
+  padding: 18px 22px;
+  width: 100%;
+  max-width: 820px;
+}
+
+.packet-head { display: flex; align-items: center; gap: 12px; }
+.packet-head h2 { margin: 0; flex: 1; font-size: 1.2rem; }
+.packet-head input { border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font: inherit; }
+.packet-close { border: none; background: none; font-size: 1.1rem; cursor: pointer; color: var(--ink-soft); }
+
+.packet-hint { font-size: 0.88rem; color: var(--ink-soft); margin: 8px 0 12px; }
+
+.packet-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.packet-table th { text-align: left; font-size: 0.74rem; text-transform: uppercase; color: var(--ink-faint); padding: 4px 6px; }
+.packet-table td { border-top: 1px solid var(--line); padding: 6px; }
+.packet-table td em { color: var(--ink-faint); font-style: normal; }
+.packet-table input[type='number'] { width: 64px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; font: inherit; }
+.packet-off { opacity: 0.5; }
+
+.packet-actions { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+
+.packet-build {
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.packet-build:disabled { opacity: 0.5; cursor: default; }
+.packet-error { color: var(--bad); font-weight: 700; font-size: 0.88rem; }

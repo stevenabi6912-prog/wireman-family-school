@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { watchDayAssignments, watchUpcomingAssignments, watchOverdueAssignments, todayISO, resolveContentUrl } from '../lib/assignments';
+import { watchDayAssignments, watchUpcomingAssignments, watchOverdueAssignments, watchYearSoFar, todayISO, resolveContentUrl } from '../lib/assignments';
 import { resolveTheme } from '../config/themes';
 import { playDing, playFanfare, isMuted, setMuted } from '../lib/sounds';
 import AssignmentCard from '../components/AssignmentCard';
@@ -19,7 +19,8 @@ import MemoryBlock from '../components/MemoryBlock';
 import { FamilyQuest } from '../components/MorningBriefing';
 import { VerseOfDay, SurpriseChest, KudosSend, KudosInbox, PersonalRecords, buddyStage } from '../components/KidExtras';
 import { tickWork, breakAvailable, minutesUntilBreak, startBreak } from '../lib/breaks';
-import { fetchStreakStats } from '../lib/streaks';
+import { deriveStreakStats } from '../lib/streaks';
+import SeasonLayer, { SeasonChip, useSeason } from '../components/SeasonLayer';
 import './StudentChecklist.css';
 
 const DONE_STATUSES = new Set(['submitted', 'graded', 'waived']);
@@ -68,7 +69,11 @@ export default function StudentChecklist() {
   const [breakReady, setBreakReady] = useState(false);
   const [minsToBreak, setMinsToBreak] = useState(30);
   const [family, setFamily] = useState(null); // pause-the-day + family quest
-  const [streakStats, setStreakStats] = useState(null);
+  const [yearDocs, setYearDocs] = useState(null); // every item dated today or earlier, live
+  const [, setMinuteTick] = useState(0); // re-render each minute so clock-based lines stay current
+  const [buddyGrew, setBuddyGrew] = useState(null); // { emoji, name } right after the buddy levels up
+  const prevBuddy = useRef(null);
+  const { season, off: seasonOff, toggle: toggleSeason } = useSeason();
   const prevDone = useRef(null);
   const prevBonusDone = useRef(null);
   const date = todayISO();
@@ -85,13 +90,14 @@ export default function StudentChecklist() {
       if (snap.exists()) setStudent(snap.data());
     });
     const unsubFamily = onSnapshot(doc(db, 'families', 'wireman'), (s) => setFamily(s.data()));
-    fetchStreakStats(studentId, date).then(setStreakStats).catch(() => {});
+    const unsubYear = watchYearSoFar(studentId, date, setYearDocs);
     const unsubDay = watchDayAssignments(studentId, dayShown, setAssignments);
     const unsubUpcoming = watchUpcomingAssignments(studentId, date, setUpcoming);
     const unsubOverdue = watchOverdueAssignments(studentId, date, setOverdueRaw);
     return () => {
       unsubStudent();
       unsubFamily();
+      unsubYear();
       unsubDay();
       unsubUpcoming();
       unsubOverdue();
@@ -113,6 +119,31 @@ export default function StudentChecklist() {
       cancelled = true;
     };
   }, [student?.theme?.headerImagePath]);
+
+  // Streaks, badges and personal records all come from the one live year
+  // listener — no extra reads when an item is checked off.
+  const streakStats = useMemo(
+    () => (yearDocs ? deriveStreakStats(yearDocs, date) : null),
+    [yearDocs, date]
+  );
+  const buddy = useMemo(
+    () => (streakStats ? { ...buddyStage(streakStats.totalDone), totalDone: streakStats.totalDone } : null),
+    [streakStats]
+  );
+
+  // The buddy just grew a stage: say so, loudly, once.
+  useEffect(() => {
+    if (!buddy) return;
+    if (prevBuddy.current && prevBuddy.current !== buddy.name) {
+      setBuddyGrew({ emoji: buddy.emoji, name: buddy.name });
+      playFanfare();
+      const t = setTimeout(() => setBuddyGrew(null), 7000);
+      prevBuddy.current = buddy.name;
+      return () => clearTimeout(t);
+    }
+    prevBuddy.current = buddy.name;
+    return undefined;
+  }, [buddy?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Catch-up first: unfinished items from earlier days go to the FRONT of
   // today's list (plus any caught-up today, so progress doesn't jump around).
@@ -267,8 +298,6 @@ export default function StudentChecklist() {
         playDing(student?.theme?.ding);
         setBurst('small');
       }
-      // streak/badge numbers move with each completion
-      fetchStreakStats(studentId, date).then(setStreakStats).catch(() => {});
     }
     prevDone.current = doneCount;
   }, [doneCount, allDone, assignments]);
@@ -280,6 +309,7 @@ export default function StudentChecklist() {
     setBreakReady(breakAvailable(studentId));
     setMinsToBreak(minutesUntilBreak(studentId));
     const t = setInterval(() => {
+      setMinuteTick((n) => n + 1);
       if (document.visibilityState === 'visible' && activeIndex >= 0 && !breakOpen) {
         tickWork(studentId);
         setBreakReady(breakAvailable(studentId));
@@ -321,6 +351,23 @@ export default function StudentChecklist() {
     return <div className="loading-screen">Getting your list ready…</div>;
   }
 
+  // "Done by about 1:40": now plus what's left by the estimates, crediting
+  // the active item for the time already spent on it. Rounded to 5 minutes —
+  // it's a forecast, not a deadline.
+  let finishLabel = null;
+  if (!browsingOtherDay && total > 0 && !allDone) {
+    let remaining = 0;
+    for (const a of combined) {
+      if (DONE_STATUSES.has(a.status)) continue;
+      const est = a.estimatedMinutes ?? 20;
+      const startedMs = a.startedAt?.toMillis?.();
+      const spent = startedMs ? Math.max(0, (Date.now() - startedMs) / 60000) : 0;
+      remaining += startedMs ? Math.max(est - spent, 2) : est;
+    }
+    const finish = new Date(Math.ceil((Date.now() + remaining * 60000) / 300000) * 300000);
+    finishLabel = `${((finish.getHours() + 11) % 12) + 1}:${String(finish.getMinutes()).padStart(2, '0')}`;
+  }
+
   const styleVars = {
     '--t-bg': theme.colors.bg,
     '--t-card': theme.colors.card,
@@ -332,6 +379,7 @@ export default function StudentChecklist() {
 
   return (
     <div className={`checklist-screen ${large ? 'checklist-large' : ''}`} style={styleVars}>
+      <SeasonLayer season={season} off={seasonOff} />
       {parentView && (
         <div className="parentview-bar">
           <Link to="/dashboard">← Back to my dashboard</Link>
@@ -377,6 +425,7 @@ export default function StudentChecklist() {
             <p className="hero-date">
               {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
+            <SeasonChip season={season} off={seasonOff} onToggle={toggleSeason} />
           </div>
         </div>
         <div className="hero-actions">
@@ -406,20 +455,28 @@ export default function StudentChecklist() {
 
       {streakStats && (
         <div className="streak-strip">
-          {(() => {
-            const stage = buddyStage(streakStats.totalDone);
-            return (
-              <span className="streak-badge streak-buddy" title={stage.next ? `Grows again at ${stage.next.at} items!` : 'Fully grown!'}>
-                {stage.emoji} {stage.name}{stage.next && ` · next: ${stage.next.emoji} at ${stage.next.at}`}
-              </span>
-            );
-          })()}
+          {buddy && (
+            <span
+              key={buddy.name}
+              className="streak-badge streak-buddy"
+              title={buddy.next ? `Grows again at ${buddy.next.at} items!` : 'Fully grown!'}
+            >
+              {buddy.emoji} {buddy.name}{buddy.next && ` · next: ${buddy.next.emoji} at ${buddy.next.at}`}
+            </span>
+          )}
           {streakStats.streak > 0 && (
             <span className="streak-flame">🔥 {streakStats.streak}-day streak{large ? '!' : ''}</span>
           )}
           {streakStats.badges.map((b) => (
             <span key={b.label} className="streak-badge" title={b.label}>{b.emoji} {b.label}</span>
           ))}
+        </div>
+      )}
+
+      {buddyGrew && (
+        <div className="buddy-grew" role="status">
+          <span className="buddy-grew-emoji">{buddyGrew.emoji}</span>
+          {large ? `Your buddy grew into a ${buddyGrew.name}!` : `Your study buddy just grew into a ${buddyGrew.name}! Keep feeding it finished work.`}
         </div>
       )}
 
@@ -447,9 +504,12 @@ export default function StudentChecklist() {
         <>
           <div className="progress-zone">
             <div className="progress-track" role="progressbar" aria-valuenow={doneCount} aria-valuemax={total}>
-              <div className="progress-fill" style={{ width: `${pct}%` }} />
+              <div className="progress-fill" style={{ width: `${pct}%` }}>
+                {/* keyed on the count so each check-off replays the sweep */}
+                {doneCount > 0 && <span key={doneCount} className="progress-shimmer" />}
+              </div>
               <span className="progress-runner" style={{ left: `calc(${pct}% - 18px)` }}>
-                {theme.avatar}
+                <span key={doneCount} className="progress-runner-hop">{theme.avatar}</span>
               </span>
               <span className="progress-label">
                 {doneCount} of {total} done
@@ -461,6 +521,11 @@ export default function StudentChecklist() {
               </p>
             )}
             {cheer && <p className="cheer-line">{cheer}</p>}
+            {finishLabel && (
+              <p className="finish-forecast">
+                🏁 {large ? `Done by about ${finishLabel}!` : `At this pace you'll be done around ${finishLabel}.`}
+              </p>
+            )}
           </div>
 
           {allDone && parentView && (
@@ -512,13 +577,13 @@ export default function StudentChecklist() {
 
       <MemoryBlock studentId={studentId} large={large} />
 
-      <WeeklyReport studentId={studentId} justFinished={allDone} />
+      <WeeklyReport studentId={studentId} justFinished={allDone} yearDocs={yearDocs} streak={streakStats?.streak ?? 0} />
 
       <FamilyQuest />
 
       <PersonalRecords stats={streakStats} large={large} />
 
-      <YearTrail studentId={studentId} avatar={theme.avatar} />
+      <YearTrail docs={yearDocs} family={family} avatar={theme.avatar} buddy={buddy} />
 
       {burst && <Confetti size={burst} style={student?.theme?.confetti} onDone={() => setBurst(null)} />}
 

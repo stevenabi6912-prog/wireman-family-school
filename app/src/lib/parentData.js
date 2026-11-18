@@ -27,6 +27,40 @@ export function watchAssignmentsThroughToday(callback) {
   });
 }
 
+function isoDaysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// What the dashboard actually needs, instead of the whole year every time it
+// opens: the last few weeks (today, recent history for the trend flags and the
+// Bible queue) plus anything OLDER that's still unfinished, so missing work
+// never falls off the edge of the window. Emits one merged list.
+export const DASHBOARD_WINDOW_DAYS = 35;
+
+export function watchDashboardAssignments(callback) {
+  const col = collection(db, 'assignments');
+  const cutoff = isoDaysAgo(DASHBOARD_WINDOW_DAYS);
+  let recent = null;
+  let stale = [];
+  const emit = () => {
+    if (recent === null) return; // wait for the main window before first paint
+    const seen = new Set(recent.map((a) => a.id));
+    callback([...stale.filter((a) => !seen.has(a.id)), ...recent]);
+  };
+  const unsubRecent = onSnapshot(
+    query(col, where('scheduledDate', '>=', cutoff), where('scheduledDate', '<=', todayISO())),
+    (snap) => { recent = snap.docs.map((d) => ({ id: d.id, ...d.data() })); emit(); }
+  );
+  const unsubStale = onSnapshot(
+    query(col, where('status', 'in', ['not_started', 'in_progress']), where('scheduledDate', '<', cutoff)),
+    (snap) => { stale = snap.docs.map((d) => ({ id: d.id, ...d.data() })); emit(); },
+    (err) => console.error('older unfinished work:', err)
+  );
+  return () => { unsubRecent(); unsubStale(); };
+}
+
 export function watchStudents(callback) {
   return onSnapshot(collection(db, 'students'), (snap) => {
     const byId = {};

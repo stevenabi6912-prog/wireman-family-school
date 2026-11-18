@@ -2,9 +2,12 @@ import {
   collection,
   doc,
   onSnapshot,
+  query,
+  where,
   setDoc,
   updateDoc,
   serverTimestamp,
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -28,6 +31,31 @@ export function watchAllGrades(callback) {
   return onSnapshot(collection(db, 'grades'), (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });
+}
+
+// The dashboard's slice of the gradebook: recent grades (trend flags, today's
+// low scores, the Bible queue) plus everything still waiting on Abi however
+// old it is. The gradebook page itself still loads the lot.
+export function watchDashboardGrades(callback, days = 35) {
+  const col = collection(db, 'grades');
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  let recent = null;
+  let waiting = [];
+  const emit = () => {
+    if (recent === null) return;
+    const seen = new Set(recent.map((g) => g.id));
+    callback([...waiting.filter((g) => !seen.has(g.id)), ...recent]);
+  };
+  const unsubRecent = onSnapshot(query(col, where('gradedAt', '>=', Timestamp.fromDate(since))), (snap) => {
+    recent = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    emit();
+  });
+  const unsubWaiting = onSnapshot(query(col, where('needsManualReview', '==', true)), (snap) => {
+    waiting = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    emit();
+  });
+  return () => { unsubRecent(); unsubWaiting(); };
 }
 
 // { [studentId]: { [subjectId]: { avg, count } } } over graded work with scores.

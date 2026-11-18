@@ -27,11 +27,18 @@ export async function fetchStreakStats(studentId, todayIso) {
       where('scheduledDate', '<=', todayIso)
     )
   );
+  return deriveStreakStats(snap.docs.map((d) => d.data()), todayIso);
+}
 
+// Same numbers from assignment docs already in hand — the kid's page keeps
+// one live listener on the year so far and derives streaks, badges and the
+// year trail from it, instead of re-reading the whole history every time an
+// item is checked off.
+export function deriveStreakStats(docs, todayIso) {
   const byDate = {};
   let totalDone = 0;
-  snap.forEach((d) => {
-    const a = d.data();
+  docs.forEach((a) => {
+    if (!a.scheduledDate || a.scheduledDate > todayIso) return;
     const day = (byDate[a.scheduledDate] ??= { total: 0, done: 0, minutes: 0, lastFinish: null });
     day.total++;
     if (DONE.has(a.status)) {

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { resolveTheme } from '../config/themes';
 import { setParentGrade, scoreLabel } from '../lib/grades';
 import './BibleGrading.css';
@@ -14,6 +16,25 @@ export default function BibleGrading({ assignments, grades, students, order }) {
   const [draft, setDraft] = useState({}); // assignmentId -> { score, outOf, note }
   const [saving, setSaving] = useState(null);
   const [justSaved, setJustSaved] = useState({});
+  // The dashboard only carries the last few weeks; the whole year's Bible
+  // work is fetched once, on request.
+  const [older, setOlder] = useState(null); // null | 'loading' | { assignments, grades }
+
+  async function loadOlder() {
+    setOlder('loading');
+    try {
+      const [as, gs] = await Promise.all([
+        getDocs(query(collection(db, 'assignments'), where('subjectId', '==', 'bible'))),
+        getDocs(query(collection(db, 'grades'), where('subjectId', '==', 'bible'))),
+      ]);
+      setOlder({
+        assignments: as.docs.map((d) => ({ id: d.id, ...d.data() })),
+        grades: gs.docs.map((d) => ({ id: d.id, ...d.data() })),
+      });
+    } catch {
+      setOlder(null);
+    }
+  }
 
   const defaultOutOf = (() => {
     try {
@@ -25,14 +46,17 @@ export default function BibleGrading({ assignments, grades, students, order }) {
 
   const gradeFor = useMemo(() => {
     const map = {};
-    for (const g of grades ?? []) map[g.assignmentId] = g;
+    for (const g of older?.grades ?? []) map[g.assignmentId] = g;
+    for (const g of grades ?? []) map[g.assignmentId] = g; // live copy wins
     return map;
-  }, [grades]);
+  }, [grades, older]);
 
   // Finished Bible work, newest first: the ones with no score yet come first,
   // then recently scored ones so a number can be changed right here.
   const { toScore, scored } = useMemo(() => {
-    const bible = (assignments ?? [])
+    const live = new Set((assignments ?? []).map((a) => a.id));
+    const today = new Date().toLocaleDateString('sv-SE');
+    const bible = [...(assignments ?? []), ...(older?.assignments ?? []).filter((a) => !live.has(a.id) && a.scheduledDate <= today)]
       // itemType check: Luke's daily TFM slot shares the subject but is
       // graded by TFM's own teachers — Abi uploads the trimester report
       // card instead, so it never belongs in this queue.
@@ -42,7 +66,7 @@ export default function BibleGrading({ assignments, grades, students, order }) {
       toScore: bible.filter((a) => !gradeFor[a.id]),
       scored: bible.filter((a) => gradeFor[a.id]).slice(0, 6),
     };
-  }, [assignments, gradeFor]);
+  }, [assignments, gradeFor, older]);
 
   async function save(a) {
     const d = draft[a.id] ?? {};
@@ -142,6 +166,10 @@ export default function BibleGrading({ assignments, grades, students, order }) {
               )}
             </>
           )}
+          {older === null && (
+            <button className="bible-older" onClick={loadOlder}>Look further back than the last 5 weeks</button>
+          )}
+          {older === 'loading' && <p className="bible-hint">Loading the whole year's Bible work…</p>}
         </>
       )}
     </section>

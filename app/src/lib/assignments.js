@@ -68,6 +68,21 @@ export function watchUpcomingAssignments(studentId, afterDateISO, callback) {
   });
 }
 
+// Everything on a kid's plan dated today or earlier, live. One listener
+// feeds the streak strip, badges, personal records and the year trail — they
+// used to make three separate passes over the same history, one of them
+// again after every single check-off.
+export function watchYearSoFar(studentId, todayIso, callback) {
+  const q = query(
+    collection(db, 'assignments'),
+    where('studentId', '==', studentId),
+    where('scheduledDate', '<=', todayIso)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
 export async function setAssignmentStatus(assignmentId, status) {
   await updateDoc(doc(db, 'assignments', assignmentId), {
     status,
@@ -181,8 +196,50 @@ export async function unskip(assignmentId) {
   });
 }
 
+// A phone or webcam photo is 5-8 MB; a worksheet is perfectly legible at a
+// fraction of that. Shrinking before upload makes turn-ins feel instant and
+// spares the grader downloading every byte. Anything that can't be decoded
+// (or wouldn't get smaller) goes up untouched — a slow upload beats a lost one.
+const MAX_PHOTO_EDGE = 2000;
+
+async function shrinkPhoto(file) {
+  if (!file.type?.startsWith('image/') || file.type === 'image/gif' || file.size < 700 * 1024) return file;
+  try {
+    let source;
+    let width;
+    let height;
+    try {
+      source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      ({ width, height } = source);
+    } catch {
+      // Safari can show formats (HEIC) it won't hand to createImageBitmap
+      const url = URL.createObjectURL(file);
+      try {
+        source = new Image();
+        source.src = url;
+        await source.decode();
+        width = source.naturalWidth;
+        height = source.naturalHeight;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+    const scale = Math.min(1, MAX_PHOTO_EDGE / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
 export async function uploadSubmissionFile(studentId, dateISO, file) {
-  const path = `submissions/${studentId}/${dateISO}/${Date.now()}-${file.name}`;
-  await uploadBytes(ref(storage, path), file);
+  const out = await shrinkPhoto(file);
+  const path = `submissions/${studentId}/${dateISO}/${Date.now()}-${out.name}`;
+  await uploadBytes(ref(storage, path), out, out.type ? { contentType: out.type } : undefined);
   return path;
 }
