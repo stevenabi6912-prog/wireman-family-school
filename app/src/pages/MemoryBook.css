@@ -1,0 +1,1013 @@
+/* Memory Book — a keepsake, so it's set like a printed book: serif display
+   type on warm paper, the kid's theme color as the single accent. Every
+   surface sets its own text color; nothing leans on what it inherits. */
+
+.mb-root {
+  --mb-ink: #2b2520;
+  --mb-ink-soft: #6b6157;
+  --mb-paper: #fffdf8;
+  --mb-desk: #ece5d8;
+  --mb-line: #e4dccd;
+  --mb-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  min-height: 100dvh;
+  padding: 0 16px 56px;
+  background: var(--mb-desk);
+  color: var(--mb-ink);
+}
+
+/* ---------- toolbar (screen only) ---------- */
+
+.mb-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0 -16px 28px;
+  padding: 10px 20px;
+  background: #fffdf8;
+  border-bottom: 1px solid #e4dccd;
+  color: #2b2520;
+}
+
+.mb-back {
+  color: #4a4037;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.mb-back:hover { text-decoration: underline; }
+
+.mb-kids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 auto;
+}
+
+.mb-kid {
+  border: 1px solid #d9cfbd;
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: #ffffff;
+  color: #4a4037;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mb-kid:hover { border-color: #a89c88; }
+
+.mb-kid-on,
+.mb-kid-on:hover {
+  background: #2b2520;
+  border-color: #2b2520;
+  color: #ffffff;
+}
+
+.mb-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 18px;
+  background: #2b2520;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mb-btn:hover { background: #4a4037; }
+
+.mb-btn:disabled {
+  background: #b9b0a2;
+  color: #ffffff;
+  cursor: default;
+}
+
+.mb-kid:focus-visible,
+.mb-btn:focus-visible,
+.mb-back:focus-visible,
+.mb-letter-input:focus-visible {
+  outline: 3px solid #2f6fdb;
+  outline-offset: 2px;
+}
+
+/* ---------- loading / error ---------- */
+
+.mb-status {
+  max-width: 460px;
+  margin: 12vh auto 0;
+  padding: 36px 28px;
+  border-radius: 16px;
+  background: #fffdf8;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.3rem;
+  text-align: center;
+  box-shadow: 0 6px 24px rgba(60, 45, 20, 0.12);
+}
+
+.mb-status p { margin: 0 0 12px; }
+
+.mb-status-sub {
+  color: #6b6157;
+  font-family: system-ui, sans-serif;
+  font-size: 0.95rem;
+}
+
+.mb-status-avatar {
+  font-size: 3.4rem;
+  line-height: 1;
+  margin-bottom: 14px;
+  animation: mb-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes mb-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mb-status-avatar { animation: none; }
+}
+
+/* ---------- the book ---------- */
+
+.mb-book {
+  max-width: 8.5in;
+  margin: 0 auto;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.mb-sheet {
+  margin: 0 0 28px;
+  padding: 48px 56px;
+  border-radius: 6px;
+  background: var(--mb-paper);
+  color: var(--mb-ink);
+  box-shadow: 0 1px 2px rgba(60, 45, 20, 0.08), 0 10px 30px rgba(60, 45, 20, 0.1);
+}
+
+.mb-print-only { display: none; }
+
+.mb-head { margin: 0 0 26px; }
+
+.mb-kicker {
+  margin: 0 0 6px;
+  color: var(--mb-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.mb-title {
+  margin: 0;
+  color: var(--mb-ink);
+  font-family: var(--mb-serif);
+  font-size: 2.3rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.mb-title::after {
+  content: '';
+  display: block;
+  width: 56px;
+  height: 3px;
+  margin-top: 14px;
+  border-radius: 2px;
+  background: var(--mb-accent);
+}
+
+.mb-lede {
+  margin: 14px 0 0;
+  max-width: 60ch;
+  color: var(--mb-ink-soft);
+  font-family: var(--mb-serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.mb-subhead {
+  margin: 26px 0 10px;
+  color: var(--mb-ink);
+  font-family: var(--mb-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.mb-pending {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--mb-accent-soft);
+  color: #2b2520;
+  line-height: 1.45;
+}
+
+.mb-colophon {
+  margin: 0;
+  color: #857a6c;
+  font-family: var(--mb-serif);
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ---------- cover ---------- */
+
+.mb-cover {
+  display: flex;
+  min-height: 9.6in;
+  padding: 22px;
+  /* the darkening layer keeps white type readable on the lighter themes */
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.42)), var(--mb-cover);
+  color: #ffffff;
+}
+
+.mb-cover-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 28px;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  border-radius: 3px;
+  color: #ffffff;
+  text-align: center;
+}
+
+.mb-cover-school {
+  margin: 0 0 40px;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.mb-cover-avatar {
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 150px;
+  margin-bottom: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  font-size: 5.2rem;
+  line-height: 1;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+}
+
+.mb-cover-name {
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--mb-serif);
+  font-size: clamp(3.4rem, 11vw, 6rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.mb-cover-grade {
+  margin: 16px 0 0;
+  color: #ffffff;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.mb-cover-rule {
+  width: 70px;
+  height: 2px;
+  margin: 28px 0;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.mb-cover-book {
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--mb-serif);
+  font-size: 1.9rem;
+  font-style: italic;
+}
+
+.mb-cover-photo {
+  display: block;
+  width: min(72%, 420px);
+  max-height: 170px;
+  margin-top: 32px;
+  border: 5px solid #ffffff;
+  border-radius: 4px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+}
+
+.mb-cover-dates {
+  margin: 34px 0 0;
+  color: #ffffff;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- by the numbers ---------- */
+
+.mb-days {
+  margin-bottom: 22px;
+  padding: 24px 26px;
+  border-radius: 12px;
+  background: var(--mb-accent-soft);
+  color: #2b2520;
+}
+
+.mb-days-figure {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.mb-days-num {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 4.6rem;
+  font-weight: 600;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
+.mb-days-of {
+  color: #2b2520;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.mb-days-track {
+  height: 10px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.mb-days-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--mb-accent);
+}
+
+.mb-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.mb-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid var(--mb-line);
+  border-top: 3px solid var(--mb-accent);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2b2520;
+}
+
+.mb-tile-num {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 2.3rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.mb-tile-label {
+  color: #6b6157;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+/* ---------- subjects ---------- */
+
+.mb-subjects { display: flex; flex-direction: column; }
+
+.mb-subject {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--mb-line);
+  color: #2b2520;
+}
+
+.mb-subject:last-child { border-bottom: none; }
+
+.mb-subject-emoji {
+  flex: none;
+  width: 2rem;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.mb-subject-main { flex: 1; min-width: 0; }
+
+.mb-subject-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+
+.mb-subject-name {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.mb-subject-count {
+  color: #6b6157;
+  font-size: 0.92rem;
+}
+
+.mb-subject-bar {
+  height: 7px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--mb-accent-soft);
+  overflow: hidden;
+}
+
+.mb-subject-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--mb-accent);
+}
+
+.mb-subject-avg {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 5.6rem;
+  color: #2b2520;
+}
+
+.mb-subject-avg strong {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.mb-subject-avg small {
+  color: #6b6157;
+  font-size: 0.78rem;
+}
+
+/* ---------- gallery ---------- */
+
+.mb-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px 18px;
+}
+
+.mb-photo {
+  margin: 0;
+  color: #2b2520;
+}
+
+.mb-photo-frame {
+  aspect-ratio: 3 / 4;
+  padding: 6px;
+  border: 1px solid var(--mb-line);
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(60, 45, 20, 0.12);
+}
+
+/* contain, not cover: it's their handwriting — don't crop the page */
+.mb-photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #f4efe6;
+}
+
+.mb-photo figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 2px 0;
+}
+
+.mb-photo-title {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.mb-photo-meta {
+  color: #6b6157;
+  font-size: 0.8rem;
+}
+
+.mb-photo-score {
+  color: var(--mb-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- books ---------- */
+
+.mb-books {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb-shelf-book {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mb-line);
+  color: #2b2520;
+}
+
+.mb-shelf-book:last-child { border-bottom: none; }
+
+.mb-book-spine { flex: none; font-size: 1.7rem; }
+
+.mb-book-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mb-book-title {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.35rem;
+  font-style: italic;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.mb-book-dates {
+  color: #6b6157;
+  font-size: 0.88rem;
+}
+
+.mb-book-count {
+  flex: none;
+  color: #6b6157;
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.mb-book-count strong {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- learned by heart ---------- */
+
+.mb-verse {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mb-line);
+  color: #2b2520;
+}
+
+.mb-verse:last-child { border-bottom: none; }
+
+.mb-verse-title {
+  margin: 0;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.mb-verse-ref {
+  color: #6b6157;
+  font-weight: 400;
+}
+
+.mb-verse-text {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  border-left: 3px solid var(--mb-accent);
+  color: #3d352d;
+  font-family: var(--mb-serif);
+  font-size: 1.08rem;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.mb-recited {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb-recited-item {
+  padding: 7px 0;
+  border-bottom: 1px dotted #d6ccba;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.02rem;
+  line-height: 1.3;
+}
+
+/* ---------- my weeks ---------- */
+
+.mb-weeks {
+  margin: 0 0 0 6px;
+  padding: 0;
+  border-left: 2px solid var(--mb-accent-soft);
+  list-style: none;
+}
+
+.mb-week {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 0 0 18px 22px;
+  color: #2b2520;
+}
+
+.mb-week:last-child { padding-bottom: 0; }
+
+.mb-week::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mb-accent);
+  box-shadow: 0 0 0 3px var(--mb-paper);
+}
+
+.mb-week-date {
+  flex: none;
+  width: 4.2rem;
+  padding-top: 2px;
+  color: var(--mb-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mb-week-body { flex: 1; min-width: 0; }
+
+.mb-week-headline {
+  margin: 0;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.12rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.mb-week-win {
+  margin: 4px 0 0;
+  color: #6b6157;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+/* ---------- cheers ---------- */
+
+.mb-cheer-block + .mb-cheer-block { margin-top: 8px; }
+
+.mb-cheer-block .mb-subhead { margin-top: 0; }
+
+.mb-cheer-block + .mb-cheer-block .mb-subhead { margin-top: 24px; }
+
+.mb-stickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--mb-accent-soft);
+}
+
+.mb-sticker {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: #ffffff;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.mb-cheer-line {
+  margin: 10px 0 0;
+  color: #4a4037;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* ---------- business ---------- */
+
+.mb-ledger {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--mb-line);
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.mb-ledger-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border-left: 1px solid var(--mb-line);
+  background: #ffffff;
+  color: #2b2520;
+}
+
+.mb-ledger-cell:first-child { border-left: none; }
+
+.mb-ledger-profit {
+  background: var(--mb-accent-soft);
+  color: #2b2520;
+}
+
+.mb-ledger-label {
+  color: #6b6157;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mb-ledger-profit .mb-ledger-label { color: #4a4037; }
+
+.mb-ledger-num {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.mb-biz-note {
+  margin: 10px 0 0;
+  color: #6b6157;
+  font-size: 0.92rem;
+}
+
+.mb-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 34px;
+  margin-top: 22px;
+}
+
+.mb-fact {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #6b6157;
+  font-size: 1rem;
+}
+
+.mb-fact strong {
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mb-biz-goal {
+  margin-top: 22px;
+  padding: 14px 18px;
+  border-left: 3px solid var(--mb-accent);
+  background: #ffffff;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.08rem;
+  line-height: 1.5;
+}
+
+.mb-biz-goal p { margin: 0; }
+
+.mb-biz-goal p + p { margin-top: 6px; }
+
+.mb-report-text,
+.mb-letter-text {
+  margin: 0;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.1rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the letter ---------- */
+
+.mb-letter-greeting {
+  margin: 0 0 14px;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.4rem;
+  font-style: italic;
+}
+
+.mb-letter-input {
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid #d6ccba;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.1rem;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.mb-letter-input::placeholder { color: #8d8274; }
+
+.mb-letter-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.mb-letter-status {
+  color: #6b6157;
+  font-size: 0.92rem;
+}
+
+.mb-letter-line {
+  height: 0.42in;
+  border-bottom: 1px solid #b9b0a2;
+}
+
+.mb-letter-sign {
+  margin: 28px 0 0;
+  color: #2b2520;
+  font-family: var(--mb-serif);
+  font-size: 1.25rem;
+  font-style: italic;
+  line-height: 1.5;
+  text-align: right;
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 720px) {
+  .mb-sheet { padding: 30px 22px; }
+  .mb-cover { padding: 14px; min-height: 80dvh; }
+  .mb-title { font-size: 1.9rem; }
+  .mb-gallery { grid-template-columns: repeat(2, 1fr); }
+  .mb-recited { grid-template-columns: 1fr; }
+  .mb-ledger { grid-template-columns: 1fr; }
+  .mb-ledger-cell { border-left: none; border-top: 1px solid var(--mb-line); }
+  .mb-ledger-cell:first-child { border-top: none; }
+  .mb-week { flex-direction: column; gap: 2px; }
+  .mb-kids { margin: 0; }
+  .mb-toolbar { position: static; }
+}
+
+/* ---------- paper (US Letter; @page is set by the component) ---------- */
+
+@media print {
+  /* the app-wide "update available" pill is a bare button under #root */
+  body.mb-open #root > button { display: none !important; }
+
+  .mb-root {
+    min-height: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .mb-toolbar,
+  .mb-screen-only { display: none !important; }
+
+  .mb-print-only { display: block; }
+
+  .mb-book { max-width: none; font-size: 11pt; }
+
+  .mb-sheet {
+    margin: 0 0 0.4in;
+    padding: 0;
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  .mb-break { break-before: page; }
+
+  /* moves to the next page whole rather than splitting the list in two */
+  .mb-keep { break-inside: avoid; }
+
+  .mb-head { break-after: avoid; }
+
+  .mb-subhead { break-after: avoid; }
+
+  /* 11in page − 2 × 0.55in margins, less a hair so it can't spill a blank page */
+  .mb-cover {
+    height: 9.75in;
+    min-height: 0;
+    margin: 0;
+    padding: 0.22in;
+    break-after: page;
+    background: linear-gradient(160deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.42)), var(--mb-cover);
+  }
+
+  .mb-cover-name { font-size: 64pt; }
+
+  .mb-days,
+  .mb-tile,
+  .mb-subject,
+  .mb-shelf-book,
+  .mb-verse,
+  .mb-recited-item,
+  .mb-week,
+  .mb-cheer-block,
+  .mb-ledger,
+  .mb-facts,
+  .mb-biz-goal { break-inside: avoid; }
+
+  .mb-tiles { grid-template-columns: repeat(3, 1fr); }
+
+  /* Inline-blocks instead of a grid: a photo card is never split across two
+     pages that way, in Safari as well as Chrome. */
+  .mb-gallery {
+    display: block;
+    margin-right: -0.2in;
+    /* each row of photos is one "line": without this the default of two
+       orphan lines pushes the whole gallery off the heading's page */
+    orphans: 1;
+    widows: 1;
+  }
+
+  .mb-photo {
+    display: inline-block;
+    width: calc(33.333% - 0.2in);
+    margin: 0 0.2in 0.22in 0;
+    vertical-align: top;
+    break-inside: avoid;
+  }
+
+  /* sized so the heading plus two rows of three fill a Letter page */
+  .mb-photo-frame {
+    aspect-ratio: 4 / 5;
+    box-shadow: none;
+  }
+
+  .mb-photo-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .mb-week::before { box-shadow: 0 0 0 3px #ffffff; }
+
+  .mb-letter-sign { break-inside: avoid; }
+
+  .mb-colophon { break-before: avoid; }
+}

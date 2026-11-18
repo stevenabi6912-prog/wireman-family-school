@@ -7,6 +7,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import Records from './pages/Records';
 import ReportCards from './pages/ReportCards';
 import BusinessHQ from './pages/BusinessHQ';
+import MemoryBook from './pages/MemoryBook';
 import UpdateNudge from './components/UpdateNudge';
 
 export default function App() {
@@ -62,6 +63,15 @@ export default function App() {
             element={
               <RequireRole role="parent">
                 <BusinessHQ />
+              </RequireRole>
+            }
+          />
+          {/* Year-in-review keepsake per child; bare path lands on the first kid */}
+          <Route
+            path="/memory-book/:kidId?"
+            element={
+              <RequireRole role="parent">
+                <MemoryBook />
               </RequireRole>
             }
           />
