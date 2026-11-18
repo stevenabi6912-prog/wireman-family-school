@@ -53,6 +53,12 @@ service firebase.storage {
       allow write: if isParent();
     }
 
+    // Outside report cards Abi attaches to a student's term (Luke's TFM
+    // report card, etc.): hers alone — kids never see or upload these.
+    match /reportcards/{allPaths=**} {
+      allow read, write: if isParent();
+    }
+
     // Theme header pictures (cosmetic, kid-chosen): any family member can view
     // them (they render on dashboard cards too); only that student or the
     // parent can upload/replace. Images only, max 10 MB.

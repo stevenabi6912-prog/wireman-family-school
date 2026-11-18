@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import StudentChecklist from './pages/StudentChecklist';
 import ParentDashboard from './pages/ParentDashboard';
 import Records from './pages/Records';
+import ReportCards from './pages/ReportCards';
 import BusinessHQ from './pages/BusinessHQ';
 import UpdateNudge from './components/UpdateNudge';
 
@@ -36,6 +37,14 @@ export default function App() {
             element={
               <RequireRole role="parent">
                 <Records />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/report-cards"
+            element={
+              <RequireRole role="parent">
+                <ReportCards />
               </RequireRole>
             }
           />
