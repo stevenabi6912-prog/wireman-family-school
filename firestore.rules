@@ -148,7 +148,11 @@ service cloud.firestore {
             && request.auth.token.studentId in list);
       }
 
-      allow read: if amPlaying(resource.data.players);
+      // Finished games are readable by the whole family: the season ladder
+      // counts everyone's wins, and a finished board holds nothing secret
+      // (Battleship fleets live in the subcollection below, still private).
+      allow read: if amPlaying(resource.data.players)
+        || (isSignedIn() && resource.data.status == 'over');
       allow create: if amPlaying(request.resource.data.players)
         && request.resource.data.players.size() == 2;
       allow update: if amPlaying(resource.data.players)

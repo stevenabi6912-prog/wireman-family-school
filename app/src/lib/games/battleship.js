@@ -81,3 +81,38 @@ export function initialBattleship() {
 export function cellName(i) {
   return `${String.fromCharCode(65 + (i % GRID))}${Math.floor(i / GRID) + 1}`;
 }
+
+// Where the ships I have sunk were lying, worked out from my own shots alone
+// (the enemy fleet doc is never readable). The shot that finished a ship names
+// it; the ship is the straight run of earlier hits through that cell. If two
+// runs fit — ships lying side by side — the answer is left out rather than
+// guessed, so the board never shows a ship somewhere it wasn't.
+export function revealSunk(shots) {
+  const used = new Set();
+  const found = [];
+  shots.forEach((shot, idx) => {
+    if (!shot.sunk) return;
+    const size = SHIPS.find((s) => s.name === shot.sunk)?.size;
+    if (!size) return;
+    const hits = new Set(
+      shots.slice(0, idx + 1).filter((s) => s.hit && !used.has(s.cell)).map((s) => s.cell)
+    );
+    const row = Math.floor(shot.cell / GRID);
+    const col = shot.cell % GRID;
+    const fits = [];
+    for (let k = 0; k < size; k++) {
+      const across = [];
+      const down = [];
+      for (let j = 0; j < size; j++) {
+        if (col - k + j >= 0 && col - k + j < GRID) across.push(row * GRID + col - k + j);
+        if (row - k + j >= 0 && row - k + j < GRID) down.push((row - k + j) * GRID + col);
+      }
+      if (across.length === size && across.every((c) => hits.has(c))) fits.push(across);
+      if (down.length === size && down.every((c) => hits.has(c))) fits.push(down);
+    }
+    if (fits.length !== 1) return;
+    fits[0].forEach((c) => used.add(c));
+    found.push({ name: shot.sunk, size, cells: fits[0], sunk: true });
+  });
+  return found;
+}

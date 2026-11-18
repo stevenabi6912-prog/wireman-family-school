@@ -6,6 +6,7 @@ import StudentChecklist from './pages/StudentChecklist';
 import ParentDashboard from './pages/ParentDashboard';
 import Records from './pages/Records';
 import BusinessHQ from './pages/BusinessHQ';
+import GameLab from './pages/GameLab';
 import UpdateNudge from './components/UpdateNudge';
 
 export default function App() {
@@ -62,6 +63,14 @@ export default function App() {
             element={
               <RequireRole role="parent">
                 <StudentChecklist />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/gamelab"
+            element={
+              <RequireRole role="parent">
+                <GameLab />
               </RequireRole>
             }
           />

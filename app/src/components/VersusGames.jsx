@@ -1,26 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  GAME_TYPES, watchMyGames, createGame, saveGame, deleteGame, resignGame,
+  GAME_TYPES, watchMyGames, watchFinishedGames, createGame, saveGame, clearGame, resignGame,
   saveFleet, loadFleet, awaitingMe,
 } from '../lib/versus';
-import { initialChess, legalMoves, applyMove, gameStatus, moveLabel, PIECE_GLYPH } from '../lib/games/chess';
+import { initialChess, legalMoves, applyMove, gameStatus, moveLabel } from '../lib/games/chess';
 import {
-  initialCheckers, movesFor, movablePieces, applyCheckersMove, checkersStatus, ownerOf, RED,
+  initialCheckers, movesFor, movablePieces, applyCheckersMove, checkersStatus, ownerOf,
 } from '../lib/games/checkers';
 import {
-  initialBattleship, randomFleet, resolveShot, sunkShips, allSunk, cellName, GRID, CELLS, SHIPS,
+  initialBattleship, randomFleet, resolveShot, sunkShips, allSunk, cellName, revealSunk,
 } from '../lib/games/battleship';
-import { initialPool, takeShot, ballColor, isStripe, remainingFor, TABLE } from '../lib/games/pool';
+import { initialPool, takeShot, remainingFor } from '../lib/games/pool';
+import { buildLadder } from '../lib/games/ladder';
+import { BoardView, CapturedTray, CheckerTray, BattleGrid, GameIcon } from './games/Boards';
+import { ROSTER, NAMES, avatarOf, GameRow, NewGameTiles } from './games/Lobby';
+import { ChessPiece } from './games/ChessPieces';
+import { PoolCanvas, PocketedRack, poolPointAt } from './games/PoolTable';
+import { LadderBoard } from './games/Ladder';
 import { playDing, playFanfare } from '../lib/sounds';
-import { resolveTheme } from '../config/themes';
-import { PEOPLE, displayName, isParentId } from '../config/students';
 import './VersusGames.css';
-
-// Mom and Dad are opponents too, so the roster is the whole family — anyone
-// with a login can be challenged, and the games work the same either way.
-const ROSTER = Object.keys(PEOPLE);
-const NAMES = Object.fromEntries(ROSTER.map((id) => [id, displayName(id)]));
-const avatarOf = (id) => (isParentId(id) ? PEOPLE[id].emoji : resolveTheme(id).avatar);
 
 // ============================ Lobby ============================
 export default function VersusGames({ studentId, large }) {
@@ -28,9 +26,21 @@ export default function VersusGames({ studentId, large }) {
   const [openId, setOpenId] = useState(null);
   const [newType, setNewType] = useState(null);
 
-  useEffect(() => watchMyGames(studentId, setGames), [studentId]);
+  // Family-wide finished games for the ladder; null until they arrive. If the
+  // read is refused (a student before the ladder rule is live) the ladder
+  // falls back to the games this player was in.
+  const [familyFinished, setFamilyFinished] = useState(null);
+  const [ladderDenied, setLadderDenied] = useState(false);
 
-  const open = games?.find((g) => g.id === openId);
+  useEffect(() => watchMyGames(studentId, setGames), [studentId]);
+  useEffect(() => watchFinishedGames(setFamilyFinished, () => setLadderDenied(true)), []);
+
+  const ladder = useMemo(
+    () => buildLadder(familyFinished ?? (games ?? []).filter((g) => g.status === 'over'), ROSTER),
+    [familyFinished, games]
+  );
+
+  const open = games?.find((g) => g.id === openId && !g.cleared);
   if (open) {
     return (
       <div className="vs-wrap">
@@ -42,7 +52,7 @@ export default function VersusGames({ studentId, large }) {
 
   const yourTurn = (games ?? []).filter((g) => g.status !== 'over' && awaitingMe(g, studentId));
   const waiting = (games ?? []).filter((g) => g.status !== 'over' && !awaitingMe(g, studentId));
-  const finished = (games ?? []).filter((g) => g.status === 'over').slice(0, 4);
+  const finished = (games ?? []).filter((g) => g.status === 'over' && !g.cleared).slice(0, 4);
 
   async function start(type, opponent) {
     const state =
@@ -89,49 +99,39 @@ export default function VersusGames({ studentId, large }) {
             </>
           )}
 
+          <h4 className="vs-heading">🎲 Start a new game</h4>
           {!newType ? (
-            <div className="vs-newgrid">
-              {Object.entries(GAME_TYPES).map(([key, t]) => (
-                <button key={key} className="vs-newbtn" onClick={() => setNewType(key)}>
-                  {t.emoji} {t.label}
-                </button>
-              ))}
-            </div>
+            <NewGameTiles onPick={setNewType} />
           ) : (
-            <div className="vs-newgrid">
-              <span className="vs-hint">Who do you want to play {GAME_TYPES[newType].label} against?</span>
-              {ROSTER.filter((k) => k !== studentId).map((k) => (
-                <button key={k} className="vs-newbtn" onClick={() => start(newType, k)}>
-                  {avatarOf(k)} {NAMES[k]}
-                </button>
-              ))}
+            <div className="vs-pick">
+              <span className="vs-pick-title">
+                <GameIcon type={newType} /> Who do you want to play {GAME_TYPES[newType].label} against?
+              </span>
+              <div className="vs-pick-people">
+                {ROSTER.filter((k) => k !== studentId).map((k) => (
+                  <button key={k} className="vs-person" onClick={() => start(newType, k)}>
+                    <span className="vs-person-avatar">{avatarOf(k)}</span>
+                    {NAMES[k]}
+                  </button>
+                ))}
+              </div>
               <button className="vs-cancel" onClick={() => setNewType(null)}>cancel</button>
             </div>
           )}
-          {(games?.length ?? 0) === 0 && (
+          {(games ?? []).filter((g) => !g.cleared).length === 0 && (
             <p className="vs-hint">No games yet — start one above. Challenge a sibling, or take on Mom or Dad; they play their turn when they get a minute.</p>
           )}
+
+          <LadderBoard
+            ladder={ladder}
+            me={studentId}
+            nameOf={(id) => NAMES[id] ?? id}
+            avatarOf={avatarOf}
+            partial={ladderDenied}
+          />
         </>
       )}
     </div>
-  );
-}
-
-function GameRow({ game, me, onOpen, awaiting }) {
-  const them = game.players.find((p) => p !== me) ?? '?';
-  const t = GAME_TYPES[game.type] ?? { emoji: '🎲', label: game.type };
-  const settingUp = game.type === 'battleship' && game.status === 'setup';
-  return (
-    <button className={`vs-row ${awaiting ? 'vs-row-turn' : ''}`} onClick={onOpen}>
-      <span className="vs-row-title">{t.emoji} vs {avatarOf(them)} {NAMES[them] ?? them}</span>
-      <span className="vs-row-meta">
-        {game.status === 'over'
-          ? (game.winner === me ? '🏆 You won!' : game.winner ? 'They won' : 'Draw')
-          : settingUp
-            ? (awaiting ? 'Place your fleet' : "Waiting on their fleet")
-            : awaiting ? 'Your move' : 'Waiting'}
-      </span>
-    </button>
   );
 }
 
@@ -174,7 +174,7 @@ function Banner({ game, studentId, statusLabel }) {
 function EndActions({ game, studentId }) {
   const them = game.players.find((p) => p !== studentId);
   if (game.status === 'over') {
-    return <button className="vs-resign" onClick={() => deleteGame(game.id)}>🗑 Clear this game</button>;
+    return <button className="vs-resign" onClick={() => clearGame(game.id)}>🗑 Clear this game</button>;
   }
   return (
     <button
@@ -217,21 +217,6 @@ function ChessGame({ game, studentId, large }) {
     () => (sel === null || !myTurn ? [] : legalMoves(state, sel)),
     [sel, state, myTurn]
   );
-
-  // Black sees the board from their own side.
-  const order = useMemo(() => {
-    const idx = Array.from({ length: 64 }, (_, i) => i);
-    return iAmWhite ? idx : idx.reverse();
-  }, [iAmWhite]);
-
-  // square index -> where it sits on screen, so the sliding piece can be
-  // positioned in board percentages regardless of which way the board faces.
-  const posOf = useMemo(() => {
-    const m = new Array(64);
-    order.forEach((sq, pos) => { m[sq] = pos; });
-    return m;
-  }, [order]);
-  const coords = (sq) => ({ left: `${(posOf[sq] % 8) * 12.5}%`, top: `${Math.floor(posOf[sq] / 8) * 12.5}%` });
 
   // Slide the piece that just moved. The board already holds the NEW position,
   // so the destination square is left blank while an overlay travels into it —
@@ -297,51 +282,21 @@ function ChessGame({ game, studentId, large }) {
 
       <CapturedTray pieces={theirLoss} label={`You've taken`} />
 
-      <div className={`chess-wrap ${large ? 'chess-large' : ''}`}>
-        <div className="chess-board">
-          {order.map((i) => {
-            const row = Math.floor(i / 8);
-            const light = (row + (i % 8)) % 2 === 0;
-            const piece = state.board[i];
-            const isTarget = targets.some((m) => m.to === i);
-            const isFrom = game.lastFrom === i;
-            const isTo = game.lastTo === i;
-            const hideForAnim = anim && anim.to === i;
-            return (
-              <button
-                key={i}
-                className={`chess-sq ${light ? 'sq-light' : 'sq-dark'} ${sel === i ? 'sq-sel' : ''} ${isTarget ? 'sq-target' : ''} ${isFrom ? 'sq-lastfrom' : ''} ${isTo ? 'sq-lastto' : ''}`}
-                onClick={() => tap(i)}
-              >
-                <span className={piece && piece[0] === 'w' ? 'pc-white' : 'pc-black'}>
-                  {piece && !hideForAnim ? PIECE_GLYPH[piece] : ''}
-                </span>
-                {isTarget && <i className="sq-dot" />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* the piece in flight */}
-        {anim && (
-          <span
-            className={`chess-anim-piece ${anim.piece[0] === 'w' ? 'pc-white' : 'pc-black'}`}
-            style={coords(anim.at === 'from' ? anim.from : anim.to)}
-          >
-            {PIECE_GLYPH[anim.piece]}
-          </span>
-        )}
-
-        {/* the piece it landed on, bursting as it goes */}
-        {anim && game.lastCaptured && (
-          <span
-            className={`chess-capture-fx ${game.lastCaptured[0] === 'w' ? 'pc-white' : 'pc-black'}`}
-            style={coords(anim.to)}
-          >
-            {PIECE_GLYPH[game.lastCaptured]}
-          </span>
-        )}
-      </div>
+      {/* Black sees the board from their own side. */}
+      <BoardView
+        kind="chess"
+        board={state.board}
+        flipped={!iAmWhite}
+        large={large}
+        sel={sel}
+        targets={targets.map((m) => m.to)}
+        lastFrom={game.lastFrom}
+        lastTo={game.lastTo}
+        checkSquare={status.check ? state.board.indexOf((state.turn === 'b' ? 'b' : 'w') + 'K') : null}
+        anim={anim}
+        captureFx={anim && game.lastCaptured ? { piece: game.lastCaptured, at: anim.to } : null}
+        onTap={tap}
+      />
 
       <CapturedTray pieces={myLoss} label={`${NAMES[them]} has taken`} />
 
@@ -351,25 +306,13 @@ function ChessGame({ game, studentId, large }) {
               NOT on move made the last move. */}
           {(game.lastBy ?? (game.turn === studentId ? them : studentId)) === studentId ? 'You' : NAMES[them]}: {game.lastMove}
           {game.lastCaptured && (
-            <span className="chess-took"> — took {PIECE_GLYPH[game.lastCaptured]}</span>
+            <span className="chess-took"> — took <ChessPiece piece={game.lastCaptured} className="cp-inline" /></span>
           )}
         </p>
       )}
 
       <p className="vs-hint">You are {iAmWhite ? 'White (you moved first)' : 'Black'}. Tap a piece, then tap where it goes.</p>
       <EndActions game={game} studentId={studentId} />
-    </div>
-  );
-}
-
-function CapturedTray({ pieces, label }) {
-  if (!pieces.length) return null;
-  return (
-    <div className="captured-tray">
-      <span className="captured-label">{label}:</span>
-      {pieces.map((p, i) => (
-        <span key={i} className={p[0] === 'w' ? 'pc-white' : 'pc-black'}>{PIECE_GLYPH[p]}</span>
-      ))}
     </div>
   );
 }
@@ -397,18 +340,6 @@ function CheckersGame({ game, studentId, large }) {
     [sel, state, myTurn]
   );
   const movable = useMemo(() => (myTurn ? movablePieces(state) : []), [state, myTurn]);
-
-  const order = useMemo(() => {
-    const idx = Array.from({ length: 64 }, (_, i) => i);
-    return iAmRed ? idx : idx.reverse();
-  }, [iAmRed]);
-
-  const posOf = useMemo(() => {
-    const m = new Array(64);
-    order.forEach((sq, pos) => { m[sq] = pos; });
-    return m;
-  }, [order]);
-  const coords = (sq) => ({ left: `${(posOf[sq] % 8) * 12.5}%`, top: `${Math.floor(posOf[sq] / 8) * 12.5}%` });
 
   // A chained jump keeps the same player on move — auto-select the jumper.
   useEffect(() => {
@@ -474,61 +405,30 @@ function CheckersGame({ game, studentId, large }) {
   const theirColor = myColor === 'r' ? 'b' : 'r';
   const iTook = checkersCaptured(state.board, theirColor);
   const theyTook = checkersCaptured(state.board, myColor);
-  const disc = (color) => (color === 'r' ? 'ck-red' : 'ck-black');
 
   return (
     <div className="vs-game">
       <Banner game={game} studentId={studentId} statusLabel={status.label} />
 
-      <CheckerTray count={iTook} colorClass={disc(theirColor)} label="You've taken" />
+      <CheckerTray count={iTook} color={theirColor} label="You've taken" />
 
-      <div className={`chess-wrap ${large ? 'chess-large' : ''}`}>
-        <div className="chess-board">
-          {order.map((i) => {
-            const row = Math.floor(i / 8);
-            const dark = (row + (i % 8)) % 2 === 1;
-            const piece = state.board[i];
-            const isTarget = targets.some((m) => m.to === i);
-            const isFrom = game.lastFrom === i;
-            const isTo = game.lastTo === i;
-            const hideForAnim = anim && anim.to === i;
-            return (
-              <button
-                key={i}
-                className={`chess-sq ${dark ? 'sq-dark' : 'sq-light'} ${sel === i ? 'sq-sel' : ''} ${isTarget ? 'sq-target' : ''} ${isFrom ? 'sq-lastfrom' : ''} ${isTo ? 'sq-lastto' : ''}`}
-                onClick={() => tap(i)}
-              >
-                {piece && !hideForAnim && (
-                  <span className={`ck-piece ${ownerOf(piece) === RED ? 'ck-red' : 'ck-black'}`}>
-                    {piece === piece.toUpperCase() ? '♛' : ''}
-                  </span>
-                )}
-                {isTarget && <i className="sq-dot" />}
-              </button>
-            );
-          })}
-        </div>
+      <BoardView
+        kind="checkers"
+        board={state.board}
+        flipped={!iAmRed}
+        large={large}
+        sel={sel}
+        targets={targets.map((m) => m.to)}
+        lastFrom={game.lastFrom}
+        lastTo={game.lastTo}
+        anim={anim}
+        captureFx={anim && game.lastCaptured && game.lastCapturedAt != null
+          ? { piece: game.lastCaptured, at: game.lastCapturedAt }
+          : null}
+        onTap={tap}
+      />
 
-        {/* the disc in flight */}
-        {anim && (
-          <span className="chess-anim-piece" style={coords(anim.at === 'from' ? anim.from : anim.to)}>
-            <span className={`ck-piece ${ownerOf(anim.piece) === RED ? 'ck-red' : 'ck-black'}`}>
-              {anim.piece === anim.piece.toUpperCase() ? '♛' : ''}
-            </span>
-          </span>
-        )}
-
-        {/* the jumped disc bursting on the square it was taken from */}
-        {anim && game.lastCaptured && game.lastCapturedAt != null && (
-          <span className="chess-capture-fx" style={coords(game.lastCapturedAt)}>
-            <span className={`ck-piece ${ownerOf(game.lastCaptured) === RED ? 'ck-red' : 'ck-black'}`}>
-              {game.lastCaptured === game.lastCaptured.toUpperCase() ? '♛' : ''}
-            </span>
-          </span>
-        )}
-      </div>
-
-      <CheckerTray count={theyTook} colorClass={disc(myColor)} label={`${NAMES[them]} has taken`} />
+      <CheckerTray count={theyTook} color={myColor} label={`${NAMES[them]} has taken`} />
 
       {game.lastMove && (
         <p className="chess-lastmove">
@@ -542,18 +442,6 @@ function CheckersGame({ game, studentId, large }) {
         You are {iAmRed ? 'Red' : 'Black'}. {state.chain !== null && myTurn ? 'Keep jumping — you can go again!' : 'Tap a piece, then tap where it goes.'}
       </p>
       <EndActions game={game} studentId={studentId} />
-    </div>
-  );
-}
-
-function CheckerTray({ count, colorClass, label }) {
-  if (!count) return null;
-  return (
-    <div className="captured-tray">
-      <span className="captured-label">{label}:</span>
-      {Array.from({ length: count }, (_, i) => (
-        <span key={i} className={`ck-taken ${colorClass}`} />
-      ))}
     </div>
   );
 }
@@ -639,16 +527,11 @@ function BattleshipGame({ game, studentId, large }) {
   }
 
   if (!fleet && draft) {
-    const occupied = new Set(draft.ships.flatMap((s) => s.cells));
     return (
       <div className="vs-game">
         <Banner game={game} studentId={studentId} />
         <p className="vs-hint">Place your fleet! Shuffle until you like it, then lock it in.</p>
-        <div className="bs-grid">
-          {Array.from({ length: CELLS }, (_, i) => (
-            <span key={i} className={`bs-cell ${occupied.has(i) ? 'bs-ship' : ''}`} />
-          ))}
-        </div>
+        <BattleGrid variant="sea" ships={draft.ships} />
         <div className="bs-actions">
           <button onClick={() => setDraft(randomFleet())}>🔀 Shuffle my fleet</button>
           <button className="bs-lock" onClick={lockFleet}>🔒 Lock it in!</button>
@@ -658,10 +541,9 @@ function BattleshipGame({ game, studentId, large }) {
   }
 
   const myTurn = game.turn === me && game.status === 'active' && !state.pending;
-  const hitsOnMe = new Set(theirShots.filter((s) => s.hit).map((s) => s.cell));
-  const missesOnMe = new Set(theirShots.filter((s) => !s.hit).map((s) => s.cell));
-  const myFleetCells = new Set((fleet?.ships ?? []).flatMap((s) => s.cells));
   const sunkByMe = myShots.map((s) => s.sunk).filter(Boolean);
+  const myLost = fleet ? sunkShips(fleet, theirShots) : [];
+  const myShips = (fleet?.ships ?? []).map((s) => ({ ...s, sunk: myLost.includes(s.name) }));
 
   return (
     <div className="vs-game">
@@ -671,34 +553,11 @@ function BattleshipGame({ game, studentId, large }) {
       ) : (
         <>
           <h4 className="bs-title">🎯 {NAMES[them]}'s waters {myTurn ? '— fire away!' : ''}</h4>
-          <div className={`bs-grid ${myTurn ? 'bs-live' : ''}`}>
-            {Array.from({ length: CELLS }, (_, i) => {
-              const shot = myShots.find((s) => s.cell === i);
-              return (
-                <button
-                  key={i}
-                  className={`bs-cell ${shot ? (shot.hit ? 'bs-hit' : 'bs-miss') : ''}`}
-                  onClick={() => fire(i)}
-                  disabled={!myTurn || !!shot}
-                >
-                  {shot ? (shot.hit ? '💥' : '·') : ''}
-                </button>
-              );
-            })}
-          </div>
+          <BattleGrid variant="radar" ships={revealSunk(myShots)} shots={myShots} live={myTurn} onFire={fire} />
           {sunkByMe.length > 0 && <p className="vs-hint">You sank: {sunkByMe.join(', ')}</p>}
 
           <h4 className="bs-title">🚢 Your fleet</h4>
-          <div className="bs-grid bs-mine">
-            {Array.from({ length: CELLS }, (_, i) => (
-              <span
-                key={i}
-                className={`bs-cell ${myFleetCells.has(i) ? 'bs-ship' : ''} ${hitsOnMe.has(i) ? 'bs-hit' : missesOnMe.has(i) ? 'bs-miss' : ''}`}
-              >
-                {hitsOnMe.has(i) ? '💥' : missesOnMe.has(i) ? '·' : ''}
-              </span>
-            ))}
-          </div>
+          <BattleGrid variant="sea" ships={myShips} shots={theirShots} />
         </>
       )}
       <EndActions game={game} studentId={studentId} />
@@ -724,75 +583,8 @@ function PoolGame({ game, studentId, large }) {
 
   const balls = anim ?? state.balls;
 
-  // Draw the table, the balls, and the aim line.
-  useEffect(() => {
-    const cv = canvasRef.current;
-    if (!cv) return;
-    const g = cv.getContext('2d');
-    const scale = cv.width / TABLE.w;
-    g.clearRect(0, 0, cv.width, cv.height);
-
-    g.fillStyle = '#0b6b3a';
-    g.fillRect(0, 0, cv.width, cv.height);
-    g.fillStyle = '#06210f';
-    for (const p of TABLE.pockets) {
-      g.beginPath();
-      g.arc(p.x * scale, p.y * scale, TABLE.pocketR * scale, 0, Math.PI * 2);
-      g.fill();
-    }
-
-    for (const b of balls) {
-      if (b.in) continue;
-      const x = b.x * scale;
-      const y = b.y * scale;
-      const r = TABLE.r * scale;
-      g.beginPath();
-      g.arc(x, y, r, 0, Math.PI * 2);
-      g.fillStyle = ballColor(b.n);
-      g.fill();
-      if (isStripe(b.n)) {
-        g.save();
-        g.beginPath();
-        g.arc(x, y, r, 0, Math.PI * 2);
-        g.clip();
-        g.fillStyle = '#fff';
-        g.fillRect(x - r, y - r, r * 2, r * 0.55);
-        g.fillRect(x - r, y + r * 0.45, r * 2, r * 0.55);
-        g.restore();
-      }
-      g.strokeStyle = 'rgba(0,0,0,.35)';
-      g.stroke();
-      if (b.n !== 0) {
-        g.fillStyle = isStripe(b.n) || b.n === 8 ? '#fff' : '#000';
-        g.font = `bold ${r}px sans-serif`;
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.fillStyle = b.n === 8 ? '#fff' : '#000';
-        g.fillText(String(b.n), x, y);
-      }
-    }
-
-    // aim line from the cue ball — solid yellow once locked, dashed white while previewing
-    const cue = balls.find((b) => b.n === 0);
-    if (myTurn && cue && !cue.in) {
-      g.strokeStyle = locked ? 'rgba(255,214,64,.95)' : 'rgba(255,255,255,.85)';
-      g.lineWidth = locked ? 3 : 2;
-      if (!locked) g.setLineDash([6, 5]);
-      g.beginPath();
-      g.moveTo(cue.x * scale, cue.y * scale);
-      g.lineTo((cue.x + Math.cos(angle) * 30 * power + 6 * Math.cos(angle)) * scale,
-               (cue.y + Math.sin(angle) * 30 * power + 6 * Math.sin(angle)) * scale);
-      g.stroke();
-      g.setLineDash([]);
-    }
-  }, [balls, angle, power, myTurn, locked]);
-
   function angleAt(e) {
-    const cv = canvasRef.current;
-    const rect = cv.getBoundingClientRect();
-    const p = e.touches?.[0] ?? e;
-    const x = ((p.clientX - rect.left) / rect.width) * TABLE.w;
-    const y = ((p.clientY - rect.top) / rect.height) * TABLE.h;
+    const { x, y } = poolPointAt(canvasRef.current, e);
     const cue = state.balls.find((b) => b.n === 0);
     return cue ? Math.atan2(y - cue.y, x - cue.x) : null;
   }
@@ -877,15 +669,16 @@ function PoolGame({ game, studentId, large }) {
       <p className="vs-hint">
         {myGroup ? `You're ${myGroup} — ${remainingFor(state, meIndex)} left, then the 8-ball.` : 'Table is open — sink one to claim solids or stripes!'}
       </p>
-      <canvas
-        ref={canvasRef}
-        className={`pool-canvas ${locked ? 'pool-canvas-locked' : ''}`}
-        width={600}
-        height={300}
+      <PoolCanvas
+        canvasRef={canvasRef}
+        balls={balls}
+        aim={myTurn ? { angle, power } : null}
+        locked={locked}
         onMouseMove={previewAim}
         onClick={clickAim}
         onTouchMove={touchAim}
       />
+      <PocketedRack balls={balls} />
       {myTurn ? (
         <div className="pool-controls">
           <span className="pool-lock-hint">

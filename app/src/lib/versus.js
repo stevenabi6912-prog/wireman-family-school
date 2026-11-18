@@ -8,12 +8,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-export const GAME_TYPES = {
-  chess: { label: 'Chess', emoji: '♟️' },
-  checkers: { label: 'Checkers', emoji: '🔴' },
-  battleship: { label: 'Battleship', emoji: '🚢' },
-  pool: { label: '8-Ball Pool', emoji: '🎱' },
-};
+export { GAME_TYPES } from './games/types';
 
 // Is this player the one who needs to act? Battleship's setup phase isn't
 // turn-based — both players place their fleet independently — so "my move"
@@ -63,8 +58,14 @@ export async function createGame({ type, players, state, status = 'active' }) {
   return ref.id;
 }
 
+// Every game-over write funnels through here, so this is the one place that
+// stamps when a game ended — the season ladder sorts wins into months by it.
 export async function saveGame(gameId, patch) {
-  await updateDoc(doc(db, 'games', gameId), { ...patch, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, 'games', gameId), {
+    ...patch,
+    ...(patch.status === 'over' ? { finishedAt: serverTimestamp() } : {}),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function resignGame(gameId, me, opponent) {
@@ -77,6 +78,26 @@ export async function resignGame(gameId, me, opponent) {
 
 export async function deleteGame(gameId) {
   await deleteDoc(doc(db, 'games', gameId));
+}
+
+// "Clear this game" on a finished match only hides it from the lobby. The doc
+// stays, because the season ladder counts wins from finished games — deleting
+// it would quietly take the win back. updatedAt is left alone on purpose:
+// older games have no finishedAt and the ladder dates them by their last write.
+export async function clearGame(gameId) {
+  await updateDoc(doc(db, 'games', gameId), { cleared: true });
+}
+
+// Every finished game in the family, for the ladder. Students may only read
+// finished games they did not play once the matching rule is deployed; until
+// then the listener is refused and `onDenied` lets the caller fall back.
+export function watchFinishedGames(callback, onDenied) {
+  const q = query(collection(db, 'games'), where('status', '==', 'over'));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => onDenied?.(err)
+  );
 }
 
 // ---- Battleship fleets: secret, one doc per player, rules-locked to them ----

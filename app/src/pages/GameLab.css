@@ -1,0 +1,54 @@
+.lab {
+  min-height: 100dvh;
+  padding: 1.25rem 1rem 3rem;
+  background: #f3f1ea;
+  color: #26233a;
+}
+
+.lab-dark { background: #14162b; color: #e9e6ff; }
+
+.lab-top { max-width: 1180px; margin: 0 auto 1rem; }
+.lab-top h1 { margin: 0; font-size: 1.6rem; }
+.lab-top p { margin: 0.2rem 0 0.7rem; opacity: 0.75; }
+
+.lab-surfaces { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.lab-surfaces button {
+  border: 2px solid #6c5ce7;
+  background: #fff;
+  color: #6c5ce7;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lab-surfaces .lab-on { background: #6c5ce7; color: #fff; }
+
+.lab-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.lab-panel h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+
+/* 'sheet' mimics the kids' break sheet; the lobby is always on white anyway */
+.lab-sheet .lab-body,
+.lab-dark .lab-body,
+.lab-body:has(> .vs-wrap) {
+  background: #fff;
+  color: #26233a;
+  border-radius: 22px;
+  padding: 1.25rem 1.4rem;
+  box-shadow: 0 10px 30px rgba(20, 20, 60, 0.12);
+}
+
+/* 'dark' is the harsh test: a white sheet on a dark-themed page that leaks
+   its light text colour inward. Anything that vanishes here was relying on
+   an inherited colour. */
+.lab-dark .lab-body { color: inherit; }
