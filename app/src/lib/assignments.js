@@ -202,7 +202,24 @@ export async function unskip(assignmentId) {
 // (or wouldn't get smaller) goes up untouched — a slow upload beats a lost one.
 const MAX_PHOTO_EDGE = 2000;
 
-async function shrinkPhoto(file) {
+// iPhone HEIC photos: only Safari can display them and the grader can't read
+// them, so they become JPEGs before upload. The converter is big, so it only
+// loads for the kid who actually picks a HEIC file.
+async function heicToJpeg(file) {
+  const isHeic = /image\/hei[cf]/.test(file.type ?? '') || /\.hei[cf]$/i.test(file.name ?? '');
+  if (!isHeic) return file;
+  try {
+    const { default: heic2any } = await import('heic2any');
+    const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+    const blob = Array.isArray(out) ? out[0] : out;
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
+async function shrinkPhoto(original) {
+  const file = await heicToJpeg(original);
   if (!file.type?.startsWith('image/') || file.type === 'image/gif' || file.size < 700 * 1024) return file;
   try {
     let source;

@@ -83,8 +83,26 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
 
   // Photos of paper work, if any
   for (const filePath of submission.fileUrls ?? []) {
-    const mt = mediaTypeFor(filePath);
-    const b64 = await fetchStorageBase64(filePath);
+    let mt = mediaTypeFor(filePath);
+    let b64;
+    if (mt === 'application/pdf') {
+      b64 = await fetchStorageBase64(filePath);
+    } else {
+      // iPhone photos can arrive as HEIC, which the grader can't read —
+      // convert those to JPEG; label everything else by its real bytes.
+      const [buf] = await admin.storage().bucket().file(filePath.split('#')[0]).download();
+      const brand = buf.subarray(4, 12).toString('latin1');
+      if (/^ftyp(heic|heix|hevc|hevx|mif1|msf1)/.test(brand)) {
+        const { default: heicConvert } = await import('heic-convert');
+        b64 = Buffer.from(await heicConvert({ buffer: buf, format: 'JPEG', quality: 0.85 })).toString('base64');
+        mt = 'image/jpeg';
+      } else {
+        if (buf[0] === 0x89 && buf[1] === 0x50) mt = 'image/png';
+        else if (buf[0] === 0xff && buf[1] === 0xd8) mt = 'image/jpeg';
+        else if (buf.subarray(8, 12).toString('latin1') === 'WEBP') mt = 'image/webp';
+        b64 = buf.toString('base64');
+      }
+    }
     if (mt === 'application/pdf') {
       content.push({ type: 'document', source: { type: 'base64', media_type: mt, data: b64 } });
     } else {
@@ -126,11 +144,17 @@ async function gradeWithClaude({ apiKey, assignment, submission, student, keyB64
     ].filter(Boolean).join('\n'),
   });
 
-  const msg = await client.messages.create({
-    model: GRADING_MODEL,
-    max_tokens: 8000,
-    messages: [{ role: 'user', content }],
-  });
+  // The model thinks before it answers, and that thinking counts against
+  // max_tokens: a page of graphing or multi-step algebra used up 8000 before
+  // any JSON was written. Streamed so the larger ceiling can't time out.
+  const msg = await client.messages
+    .stream({
+      model: GRADING_MODEL,
+      max_tokens: 40000,
+      output_config: { effort: 'medium' },
+      messages: [{ role: 'user', content }],
+    })
+    .finalMessage();
 
   const text = msg.content
     .filter((b) => b.type === 'text')
@@ -467,7 +491,7 @@ async function runGrading(submissionId, submission) {
 
 // Draft -> submitted transition on update
 export const gradeSubmission = onDocumentUpdated(
-  { document: 'submissions/{submissionId}', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: '512MiB' },
+  { document: 'submissions/{submissionId}', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 540, memory: '512MiB' },
   async (event) => {
     const before = event.data.before.data();
     const after = event.data.after.data();
@@ -478,7 +502,7 @@ export const gradeSubmission = onDocumentUpdated(
 
 // Direct submit with no prior draft (created already submitted)
 export const gradeSubmissionOnCreate = onDocumentCreated(
-  { document: 'submissions/{submissionId}', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: '512MiB' },
+  { document: 'submissions/{submissionId}', secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 540, memory: '512MiB' },
   async (event) => {
     const data = event.data.data();
     if (data.isDraft !== false) return;
