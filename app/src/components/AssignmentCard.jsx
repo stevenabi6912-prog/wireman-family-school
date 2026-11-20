@@ -4,6 +4,7 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import PdfViewer from './PdfViewer';
 import SubmissionForm from './SubmissionForm';
+import FillableTest from './FillableTest';
 import WorkViewer from './WorkViewer';
 import { MathSprint, SubjectWarmUp } from './KidExtras';
 import { markStarted, completeAssignment, resolveContentUrl, undoCompletion, skipForNow, unskip, submitWork, uploadSubmissionFile, todayISO } from '../lib/assignments';
@@ -248,7 +249,9 @@ export default function AssignmentCard({
             </div>
           )}
 
-          {assignment.contentPath && (
+          {/* A fillable test shows its own pages with answer boxes on them,
+              so it replaces both the PDF frame and the typed-answer form. */}
+          {assignment.contentPath && !assignment.fillable && (
             assignment.contentPath.endsWith('.mp3')
               ? <LessonAudio path={assignment.contentPath} large={large} />
               : <PdfViewer contentPath={assignment.contentPath} studentId={studentId} />
@@ -268,6 +271,8 @@ export default function AssignmentCard({
                   ? 'I said it all out loud ✓'
                   : 'I finished it ✓'}
             </button>
+          ) : assignment.fillable ? (
+            <FillableTest assignment={assignment} studentId={studentId} large={large} />
           ) : (
             <SubmissionForm
               assignment={assignment}
@@ -406,8 +411,9 @@ function ChapterAudio({ assignment }) {
   const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // (Not on a test — the story read aloud would be an open book.)
   const chapter =
-    assignment.subjectId === 'history'
+    assignment.subjectId === 'history' && assignment.itemType !== 'test'
       ? assignment.title?.match(/Ch(?:apter|\.)\s*(\d+)/)?.[1]
       : null;
 
