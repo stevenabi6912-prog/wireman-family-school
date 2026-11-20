@@ -133,6 +133,8 @@ export async function assignRetry(assignment) {
     contentPath: assignment.contentPath ?? null,
     keyPath: assignment.keyPath ?? null,
     externalUrl: assignment.externalUrl ?? null,
+    // an on-screen test stays an on-screen test on the second try
+    ...(assignment.fillable ? { fillable: assignment.fillable } : {}),
     retryOf: assignment.id,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

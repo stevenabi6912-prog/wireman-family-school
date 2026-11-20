@@ -100,6 +100,27 @@ The unit of "one thing to do." One per student per subject per scheduled day (us
   link/embed once the family supplies it. Until then the UI shows "link coming soon" and
   the item still requires a manual "done" checkoff so the day isn't blocked.
 
+- **On-screen ("fillable") tests** carry one more field, written by
+  `scripts/add-sotw2-fillable-tests.js`:
+
+  ```
+  fillable: {
+    pages:  [ "curriculum/history/shared/sotw2-tests/ch14-p1.png", ... ],  // page pictures, in order
+    fields: [
+      { n: 1,  k: "text",  id: "q1",  p: 1, x, y, w, h },                   // a blank (x/y/w/h are fractions of the page)
+      { n: 5,  k: "choice", opts: [ { v: "a", p: 1, x, y, w, h }, ... ] },  // tap-a-letter
+      { n: 19, k: "essay", id: "q19", p: 3, x, y, w, h }
+    ]
+  }
+  ```
+
+  When `fillable` is present the card renders `FillableTest` (answer boxes on the
+  page pictures) instead of the PDF frame + typed-answer form. `contentPath` still
+  points at the fillable PDF, used only for the "Paper copy" link. The submission
+  it writes is an ordinary `responseType: "text"` one — `text` is the numbered
+  answer list ("1. Jutland\n5. b\n…") that the review screen and grader already
+  read — plus `fields: { q1: "...", q5: "b" }` so a draft reopens as it was left.
+
 ## `submissions/{submissionId}`  (one per assignment, keyed by assignmentId)
 
 ```
