@@ -248,7 +248,7 @@ export default function AssignmentCard({
             </div>
           )}
 
-          {assignment.contentPath && (
+          {assignment.contentPath && !assignment.quiz && (
             assignment.contentPath.endsWith('.mp3')
               ? <LessonAudio path={assignment.contentPath} large={large} />
               : <PdfViewer contentPath={assignment.contentPath} studentId={studentId} />

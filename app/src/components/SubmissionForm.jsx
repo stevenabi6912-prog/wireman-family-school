@@ -7,6 +7,8 @@ import {
   todayISO,
 } from '../lib/assignments';
 
+import QuizForm from './QuizForm';
+
 const AUTOSAVE_MS = 1500;
 
 // Typed answers + optional photo upload of paper work. Autosaves continuously
@@ -69,10 +71,14 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
     timer.current = setTimeout(queueSave, AUTOSAVE_MS);
   }
 
-  function onTextChange(e) {
-    textRef.current = e.target.value;
-    setText(e.target.value);
+  function applyText(value) {
+    textRef.current = value;
+    setText(value);
     scheduleAutosave();
+  }
+
+  function onTextChange(e) {
+    applyText(e.target.value);
   }
 
   // Several photos can come in one pick (the input is `multiple`), and the
@@ -136,17 +142,23 @@ export default function SubmissionForm({ assignment, studentId, onSubmitted, lar
 
   return (
     <div className={`submission-form ${large ? 'submission-form-large' : ''}`}>
+      {assignment.quiz ? (
+        <QuizForm quiz={assignment.quiz} text={text} onChange={applyText} name={assignment.id} />
+      ) : (
+        <>
       <label className="submission-label" htmlFor={`answer-${assignment.id}`}>
-        {large ? 'Type your answer here:' : 'Your answers'}
-      </label>
-      <textarea
-        id={`answer-${assignment.id}`}
-        className="submission-text"
-        value={text}
-        onChange={onTextChange}
-        rows={large ? 4 : 8}
-        placeholder={large ? 'Type here…' : 'Type your answers. Number them to match the questions.'}
-      />
+            {large ? 'Type your answer here:' : 'Your answers'}
+          </label>
+          <textarea
+            id={`answer-${assignment.id}`}
+            className="submission-text"
+            value={text}
+            onChange={onTextChange}
+            rows={large ? 4 : 8}
+            placeholder={large ? 'Type here…' : 'Type your answers. Number them to match the questions.'}
+          />
+        </>
+      )}
       <div className="submission-actions">
         <label className="upload-btn">
           {uploading
