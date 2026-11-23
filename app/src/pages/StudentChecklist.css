@@ -991,3 +991,15 @@
   .buddy-grew, .buddy-grew-emoji { animation: none; }
   .progress-shimmer { display: none; }
 }
+
+.pdf-open-tab {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}

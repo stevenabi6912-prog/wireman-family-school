@@ -67,6 +67,9 @@ export default function PdfViewer({ contentPath, studentId }) {
           {assignedPage && page !== assignedPage && (
             <button onClick={() => setPage(assignedPage)}>Today's page ({assignedPage})</button>
           )}
+          {/* The embedded viewer can't fill in forms and on iPads shows only
+              page one — the browser's own tab does both. */}
+          <a className="pdf-open-tab" href={src} target="_blank" rel="noreferrer">↗ Open in its own tab</a>
         </span>
       </div>
       <iframe
